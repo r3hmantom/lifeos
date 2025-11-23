@@ -1,0 +1,41 @@
+const express = require('express');
+const cors = require('cors');
+const config = require('./src/config');
+const routes = require('./src/routes');
+const qdrantService = require('./src/services/qdrant');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Request Logging Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
+// API Routes
+app.use('/api/v1', routes);
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
+});
+
+async function startServer() {
+    try {
+        // Ensure Qdrant collection exists
+        await qdrantService.ensureCollection();
+
+        app.listen(config.port, '0.0.0.0', () => {
+            console.log(`Server is running on port ${config.port}`);
+        });
+    } catch (error) {
+        console.error("Failed to start server:", error);
+        process.exit(1);
+    }
+}
+
+startServer();

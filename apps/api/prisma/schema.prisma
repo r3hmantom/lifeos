@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String     @id @default(uuid())
+  email       String     @unique
+  password    String?
+  name        String?
+  preferences Json?
+  memories    Memory[]
+  summaries   Summary[]
+  schedules   Schedule[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("users")
+}
+
+enum Module {
+  UNI
+  FITNESS
+  WORK
+  LIFE
+}
+
+enum MemoryType {
+  TASK
+  EVENT
+  NOTE
+  LOG
+}
+
+model Memory {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  user        User       @relation(fields: [userId], references: [id])
+  module      Module
+  type        MemoryType
+  content     Json?
+  rawText     String     @map("raw_text")
+  vectorId    String?    @map("vector_id")
+  importance  Int        @default(1)
+  eventDate   DateTime?  @map("event_date")
+  isCondensed Boolean    @default(false) @map("is_condensed")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("memories")
+}
+
+model Summary {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  user           User     @relation(fields: [userId], references: [id])
+  module         Module
+  summaryText    String   @map("summary_text")
+  dateRangeStart DateTime @map("date_range_start")
+  dateRangeEnd   DateTime @map("date_range_end")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("summaries")
+}
+
+model Schedule {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  targetDate  DateTime @map("target_date") // Using DateTime for date, can be handled as date-only in app logic
+  dailyPlan   Json     @map("daily_plan")
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  @@map("schedules")
+}
