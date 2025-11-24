@@ -7,6 +7,7 @@ export default function RootLayout() {
       initialRouteName="splash"
     >
       <Stack.Screen name="splash" options={{ headerShown: false }} />
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="index" options={{ headerShown: false }} />
     </Stack>
   );

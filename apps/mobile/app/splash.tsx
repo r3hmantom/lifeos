@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 
-const SPLASH_DELAY = 5000; // 3 seconds
+const SPLASH_DELAY = 1000; // 3 seconds
 
 export default function SplashScreen() {
 
@@ -61,9 +61,9 @@ export default function SplashScreen() {
             createLineAnimation(thirdLineOpacity, thirdLineTranslateY, 1200),
         ]).start();
 
-        // Navigate to main screen after 8 seconds
+        // Navigate to auth screen after splash delay
         const timer = setTimeout(() => {
-            router.replace('/');
+            router.replace('/auth');
         }, SPLASH_DELAY);
 
         return () => clearTimeout(timer);
