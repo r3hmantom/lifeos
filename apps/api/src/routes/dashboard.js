@@ -18,8 +18,6 @@ router.use(auth);
  *   get:
  *     summary: Get main dashboard data
  *     tags: [Dashboard]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Dashboard data including daily plan, next task, and overview stats
@@ -61,8 +59,6 @@ router.get('/', dashboardController.getDashboard);
  *   get:
  *     summary: Get statistics for a specific module
  *     tags: [Dashboard]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: module

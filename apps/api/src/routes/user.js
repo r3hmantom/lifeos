@@ -18,8 +18,6 @@ router.use(auth);
  *   get:
  *     summary: Get user profile
  *     tags: [User]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User profile data
@@ -47,8 +45,6 @@ router.get('/profile', userController.getProfile);
  *   put:
  *     summary: Update user preferences
  *     tags: [User]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:

@@ -18,8 +18,6 @@ router.use(auth);
  *   post:
  *     summary: Create a new memory
  *     tags: [Memories]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -61,8 +59,6 @@ router.post('/', memoryController.createMemory);
  *   get:
  *     summary: Get recent memories
  *     tags: [Memories]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: module
@@ -108,8 +104,6 @@ router.get('/', memoryController.getMemories);
  *   post:
  *     summary: Search memories
  *     tags: [Memories]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:

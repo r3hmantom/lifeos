@@ -1,45 +1,44 @@
-const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 module.exports = async function(req, res, next) {
-    // BYPASS AUTH for development/testing (Disabled by default now)
-    if (process.env.BYPASS_AUTH === 'true') {
-        try {
-            // Use the first user found as the logged-in user
-            let user = await prisma.user.findFirst();
-            if (!user) {
-                // Create a dummy user if none exists
-                user = await prisma.user.create({
-                    data: {
-                        email: 'test@example.com',
-                        name: 'Test User',
-                        password: 'hashedpassword_placeholder'
-                    }
-                });
-            }
-            req.user = user;
-            return next();
-        } catch (error) {
-            console.error("Auth Bypass Error:", error);
-            return res.status(500).json({ msg: 'Auth bypass failed' });
-        }
-    }
-
-    // Get token from header
-    const token = req.header('x-auth-token') || (req.header('Authorization') ? req.header('Authorization').replace('Bearer ', '') : null);
-
-    // Check if not token
-    if (!token) {
-        // Optional: Fallback for development if needed, but safer to deny
-        return res.status(401).json({ msg: 'No token, authorization denied' });
-    }
-
-    // Verify token
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        req.user = decoded.user;
+        const email = 'test@example.com';
+        const password = 'test';
+        const name = 'Test User';
+
+        // 1. Check if the test user exists
+        let user = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        // 2. If not, create it
+        if (!user) {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            user = await prisma.user.create({
+                data: {
+                    email,
+                    name,
+                    password: hashedPassword,
+                    preferences: {}
+                }
+            });
+            console.log('Test user created');
+        }
+
+        // 3. Force this user to be the logged-in user
+        req.user = {
+            id: user.id,
+            email: user.email,
+            name: user.name
+        };
+
         next();
     } catch (err) {
-        res.status(401).json({ msg: 'Token is not valid' });
+        console.error("Auth Middleware Error:", err);
+        // In case of DB error, we can't proceed
+        res.status(500).json({ msg: 'Server Error in Auth Middleware' });
     }
 };

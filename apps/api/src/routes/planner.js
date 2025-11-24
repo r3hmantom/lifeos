@@ -18,8 +18,6 @@ router.use(auth);
  *   post:
  *     summary: Generate a daily plan
  *     tags: [Planner]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
