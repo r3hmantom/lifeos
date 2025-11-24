@@ -17,6 +17,6 @@ router.use("/memories", memoryRoutes);
 router.use("/planner", plannerRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/user", userRoutes);
-app.get("/health", (req, res) => res.json({ status: "ok" }));
+router.get("/health", (req, res) => res.json({ status: "ok" }));
 
 module.exports = router;
