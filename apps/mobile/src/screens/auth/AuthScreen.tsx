@@ -1,3 +1,4 @@
+import { hapticsSelection, hapticsSuccess, hapticsWarning } from '@/src/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -47,13 +48,19 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     const handleContinue = () => {
         if (isFormValid()) {
+            hapticsSuccess();
             // Here you would normally handle authentication
             console.log(`${mode} attempted with:`, formData);
             onAuthSuccess?.();
+        } else {
+            hapticsWarning();
+            console.log('Form is invalid');
         }
     };
 
     const toggleMode = () => {
+        hapticsSelection();
+
         setMode(mode === 'signup' ? 'login' : 'signup');
         // Clear form when switching modes
         setFormData({
@@ -161,6 +168,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                             ]}
                             onPress={handleContinue}
                             disabled={!isFormValid()}
+
                         >
                             <Text style={[
                                 styles.continueButtonText,
