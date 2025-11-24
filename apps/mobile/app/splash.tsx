@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 
-const SPLASH_DELAY = 1000; // 3 seconds
+const SPLASH_DELAY = 100; // 3 seconds
 
 export default function SplashScreen() {
 
