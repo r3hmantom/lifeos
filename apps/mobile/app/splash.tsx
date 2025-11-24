@@ -1,19 +1,29 @@
-import { IBMPlexSans_700Bold, useFonts } from '@expo-google-fonts/ibm-plex-sans';
+import Fonts from '@/src/constants/fonts';
+import {
+    IBMPlexSans_300Light,
+    IBMPlexSans_400Regular,
+    IBMPlexSans_500Medium,
+    IBMPlexSans_600SemiBold,
+    IBMPlexSans_700Bold,
+    useFonts,
+} from '@expo-google-fonts/ibm-plex-sans';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
+
+const SPLASH_DELAY = 5000; // 3 seconds
 
 export default function SplashScreen() {
 
     const router = useRouter();
 
-
     const [fontsLoaded] = useFonts({
+        IBMPlexSans_300Light,
+        IBMPlexSans_400Regular,
+        IBMPlexSans_500Medium,
+        IBMPlexSans_600SemiBold,
         IBMPlexSans_700Bold,
     });
-
-
-
 
     // Animated values
     const firstLineOpacity = useRef(new Animated.Value(0)).current;
@@ -54,7 +64,7 @@ export default function SplashScreen() {
         // Navigate to main screen after 8 seconds
         const timer = setTimeout(() => {
             router.replace('/');
-        }, 80000);
+        }, SPLASH_DELAY);
 
         return () => clearTimeout(timer);
     }, []);
@@ -119,7 +129,7 @@ const styles = StyleSheet.create({
     },
     text: {
         fontSize: 35,
-        fontFamily: 'IBMPlexSans_700Bold',
+        fontFamily: Fonts.primary.bold,
         color: '#000000',
         marginVertical: 0,
         textAlign: 'center',

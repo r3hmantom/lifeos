@@ -1,50 +1,127 @@
-# Welcome to your Expo app 👋
+📁 New Directory Structure
+Core Organization:
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+src - Main source code directory (following industry best practices)
 
-## Get started
+components/ - Reusable UI components organized by type:
 
-1. Install dependencies
+common/ - Shared components across the app
+forms/ - Form-related components
+layout/ - Layout wrapper components
+modals/ - Modal/popup components
+ui/ - Basic UI building blocks
+screens/ - Screen components organized by feature:
 
-   ```bash
-   npm install
-   ```
+auth/ - Authentication screens (login, register, etc.)
+main/ - Main app screens
+services/ - Business logic and external integrations:
 
-2. Start the app
+api/ - API communication with backend
+storage/ - Local storage management
+types/ - TypeScript type definitions:
 
-   ```bash
-   npx expo start
-   ```
+api/ - API response/request types
+navigation/ - Navigation parameter types
+constants/ - App-wide constants:
 
-In the output, you'll find options to open the app in a
+colors/ - Color palette
+fonts/ - Font definitions
+dimensions/ - Spacing, sizes, breakpoints
+utils/ - Utility functions:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+validation/ - Form validation helpers
+formatters/ - Data formatting functions
+hooks/ - Custom React hooks:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+api/ - API-related hooks
+storage/ - Storage-related hooks
+context/ - React Context providers
 
-## Get a fresh project
+navigation/ - Navigation configuration
 
-When you're ready, run:
+🛠️ What I've Created
+I've also added essential starter files with proper TypeScript typing and industry-standard patterns:
 
-```bash
-npm run reset-project
-```
+Color System - Comprehensive color palette with semantic naming
+Dimension Constants - Consistent spacing, font sizes, and layout values
+Font Management - Centralized font definitions
+API Service - Ready-to-use HTTP client with authentication
+Storage Service - AsyncStorage wrapper with error handling
+Validation Utilities - Common validation functions for forms
+Format Utilities - Data formatting helpers (dates, currency, etc.)
+Type Definitions - Strong TypeScript types for API and navigation
+This structure follows React Native and Expo best practices, making your codebase:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Scalable - Easy to add new features
+Maintainable - Clear separation of concerns
+Type-Safe - Full TypeScript support
+Consistent - Standardized patterns throughout
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+.
+├── .gitignore
+├── .vscode
+│ ├── extensions.json
+│ └── settings.json
+├── README.md
+├── app
+│ ├── \_layout.tsx
+│ ├── index.tsx
+│ └── splash.tsx
+├── app.json
+├── assets
+│ ├── fonts
+│ ├── icons
+│ └── images
+│ ├── android-icon-background.png
+│ ├── android-icon-foreground.png
+│ ├── android-icon-monochrome.png
+│ ├── favicon.png
+│ ├── icon.png
+│ ├── mascot.png
+│ ├── partial-react-logo.png
+│ ├── react-logo.png
+│ ├── react-logo@2x.png
+│ ├── react-logo@3x.png
+│ └── splash-icon.png
+├── eslint.config.js
+├── expo-env.d.ts
+├── package-lock.json
+├── package.json
+├── src
+│ ├── components
+│ │ ├── common
+│ │ ├── forms
+│ │ ├── layout
+│ │ ├── modals
+│ │ └── ui
+│ ├── constants
+│ │ ├── colors
+│ │ │ └── index.ts
+│ │ ├── dimensions
+│ │ │ └── index.ts
+│ │ └── fonts
+│ │ └── index.ts
+│ ├── context
+│ ├── hooks
+│ │ ├── api
+│ │ └── storage
+│ ├── navigation
+│ ├── screens
+│ │ ├── auth
+│ │ └── main
+│ ├── services
+│ │ ├── api
+│ │ │ └── index.ts
+│ │ └── storage
+│ │ └── index.ts
+│ ├── types
+│ │ ├── api
+│ │ │ └── index.ts
+│ │ └── navigation
+│ │ └── index.ts
+│ └── utils
+│ ├── formatters
+│ │ └── index.ts
+│ └── validation
+│ └── index.ts
+└── tsconfig.json
