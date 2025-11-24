@@ -3,6 +3,8 @@ const cors = require('cors');
 const config = require('./src/config');
 const routes = require('./src/routes');
 const qdrantService = require('./src/services/qdrant');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./src/config/swagger');
 
 const app = express();
 
@@ -14,6 +16,9 @@ app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // API Routes
 app.use('/api/v1', routes);
