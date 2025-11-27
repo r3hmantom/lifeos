@@ -1,5 +1,6 @@
 import { hapticsSelection, hapticsSuccess, hapticsWarning } from '@/src/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     KeyboardAvoidingView,
@@ -15,7 +16,6 @@ import {
 import Colors from '../../constants/colors';
 import { BorderRadius, FontSizes, Spacing } from '../../constants/dimensions';
 import Fonts from '../../constants/fonts';
-import { useRouter } from 'expo-router';
 
 interface AuthScreenProps {
     onAuthSuccess?: () => void;
@@ -53,7 +53,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             hapticsSuccess();
             // Here you would normally handle authentication
             console.log(`${mode} attempted with:`, formData);
-            
+
             if (onAuthSuccess) {
                 onAuthSuccess();
             } else {

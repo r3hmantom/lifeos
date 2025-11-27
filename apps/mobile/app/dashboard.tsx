@@ -1,12 +1,11 @@
-import React from 'react';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import DashboardScreen from "@/src/screens/dashboard/DashboardScreen";
-import MemoriesScreen from "@/src/screens/memories/MemoriesScreen";
-import GoalsScreen from "@/src/screens/goals/GoalsScreen";
 import Colors from "@/src/constants/colors";
 import Fonts from "@/src/constants/fonts";
+import DashboardScreen from "@/src/screens/dashboard/DashboardScreen";
+import GoalsScreen from "@/src/screens/goals/GoalsScreen";
+import MemoriesScreen from "@/src/screens/memories/MemoriesScreen";
+import { Ionicons } from '@expo/vector-icons';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import React from 'react';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -24,8 +23,9 @@ export default function DashboardLayout() {
                     borderTopColor: Colors.gray[100],
                     elevation: 0, // Remove shadow on Android
                     shadowOpacity: 0, // Remove shadow on iOS
-                    height: 60,
+                    height: 65,
                     paddingBottom: 5,
+                    marginBottom: 0
                 },
                 tabBarIndicatorStyle: {
                     display: 'none', // Hide the top indicator line typical of material tabs
@@ -35,10 +35,7 @@ export default function DashboardLayout() {
                     fontSize: 10,
                     textTransform: 'none',
                 },
-                tabBarIconStyle: {
-                    // width: 24,
-                    // height: 24,
-                },
+
                 swipeEnabled: true,
                 animationEnabled: true,
             }}
