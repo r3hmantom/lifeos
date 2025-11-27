@@ -3,6 +3,7 @@ import Fonts from "@/src/constants/fonts";
 import DashboardScreen from "@/src/screens/dashboard/DashboardScreen";
 import GoalsScreen from "@/src/screens/goals/GoalsScreen";
 import MemoriesScreen from "@/src/screens/memories/MemoriesScreen";
+import SettingsScreen from "@/src/screens/settings/SettingsScreen";
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import React from 'react';
@@ -67,6 +68,16 @@ export default function DashboardLayout() {
                     tabBarLabel: 'Memories',
                     tabBarIcon: ({ color, focused }) => (
                         <Ionicons name={focused ? "images" : "images-outline"} size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tab.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{
+                    tabBarLabel: 'Settings',
+                    tabBarIcon: ({ color, focused }) => (
+                        <Ionicons name={focused ? "settings" : "settings-outline"} size={24} color={color} />
                     ),
                 }}
             />
