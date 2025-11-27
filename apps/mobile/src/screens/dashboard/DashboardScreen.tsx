@@ -137,30 +137,6 @@ export default function DashboardScreen() {
                     </View>
                 </View>
 
-                {/* Bottom Section: Tasks */}
-                <View style={styles.sectionContainer}>
-                    <View style={styles.tasksHeaderRow}>
-                        <Text style={styles.sectionHeader}>Up Next</Text>
-                        <TouchableOpacity>
-                            <Ionicons name="add-circle" size={24} color={Colors.primary} />
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.tasksList}>
-                        {UPCOMING_TASKS.map(task => (
-                            <TouchableOpacity key={task.id} style={styles.taskItem}>
-                                <View style={styles.taskIconBg}>
-                                    <Ionicons name={task.icon as any} size={20} color={Colors.gray[600]} />
-                                </View>
-                                <View style={styles.taskContent}>
-                                    <Text style={styles.taskTitle}>{task.title}</Text>
-                                    <Text style={styles.taskDue}>{task.due}</Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={20} color={Colors.gray[300]} />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
             </ScrollView>
         </SafeAreaView>
     );
