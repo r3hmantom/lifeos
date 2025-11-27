@@ -15,12 +15,14 @@ import {
 import Colors from '../../constants/colors';
 import { BorderRadius, FontSizes, Spacing } from '../../constants/dimensions';
 import Fonts from '../../constants/fonts';
+import { useRouter } from 'expo-router';
 
 interface AuthScreenProps {
     onAuthSuccess?: () => void;
 }
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+    const router = useRouter();
     const [mode, setMode] = useState<'signup' | 'login'>('signup');
     const [formData, setFormData] = useState({
         name: '',
@@ -51,7 +53,12 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             hapticsSuccess();
             // Here you would normally handle authentication
             console.log(`${mode} attempted with:`, formData);
-            onAuthSuccess?.();
+            
+            if (onAuthSuccess) {
+                onAuthSuccess();
+            } else {
+                router.replace('/dashboard');
+            }
         } else {
             hapticsWarning();
             console.log('Form is invalid');

@@ -63,7 +63,7 @@ export default function SplashScreen() {
 
         // Navigate to auth screen after splash delay
         const timer = setTimeout(() => {
-            router.replace('/dashboard');
+            router.replace('/auth');
         }, SPLASH_DELAY);
 
         return () => clearTimeout(timer);
