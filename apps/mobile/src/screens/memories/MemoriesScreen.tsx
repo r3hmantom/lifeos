@@ -1,6 +1,11 @@
+import { useApp } from '@/src/context/AppContext';
+import { ApiService, Memory } from '@/src/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     FlatList,
     Keyboard,
     LayoutAnimation,
@@ -11,11 +16,11 @@ import {
     TextInput,
     TouchableOpacity,
     UIManager,
-    View,
+    View
 } from 'react-native';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
-import { hapticsSelection } from '../../utils/haptics';
+import { hapticsSelection, hapticsSuccess } from '../../utils/haptics';
 
 // Enable LayoutAnimation for Android
 if (
@@ -24,42 +29,6 @@ if (
 ) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-type Memory = {
-    id: string;
-    title: string;
-    description: string;
-    tags: string[];
-    date: string;
-    isActive: boolean;
-};
-
-const STATIC_MEMORIES: Memory[] = [
-    {
-        id: '1',
-        title: 'Sunset at the Beach',
-        description: 'Watched a beautiful sunset with friends. The sky turned purple and orange. We had a bonfire afterwards.',
-        tags: ['Nature', 'Friends', 'Summer'],
-        date: '2023-08-15',
-        isActive: true,
-    },
-    {
-        id: '2',
-        title: 'Finished the Marathon',
-        description: 'Completed my first 42km run! It was exhausting but the feeling of crossing the finish line was indescribable.',
-        tags: ['Achievement', 'Sports', 'Running'],
-        date: '2023-10-02',
-        isActive: true,
-    },
-    {
-        id: '3',
-        title: 'Coffee Shop Reading',
-        description: 'Found a cozy corner in the new downtown cafe. Read "The Alchemist" for 3 hours straight.',
-        tags: ['Relax', 'Books', 'Coffee'],
-        date: '2023-11-20',
-        isActive: false,
-    },
-];
 
 const TAG_COLORS = [
     { bg: '#E3F2FD', text: '#1565C0' }, // Blue
@@ -80,7 +49,11 @@ const getTagColor = (tag: string) => {
 };
 
 export default function MemoriesScreen() {
-    const [memories, setMemories] = useState<Memory[]>(STATIC_MEMORIES);
+    const navigation = useNavigation<any>();
+    const { checkState } = useApp();
+    const [memories, setMemories] = useState<Memory[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     // Form State
@@ -88,6 +61,21 @@ export default function MemoriesScreen() {
     const [description, setDescription] = useState('');
     const [tagInput, setTagInput] = useState('');
     const [isFormVisible, setIsFormVisible] = useState(false);
+
+    useEffect(() => {
+        loadMemories();
+    }, []);
+
+    const loadMemories = async () => {
+        try {
+            const data = await ApiService.memories.getAll();
+            setMemories(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const toggleExpand = (id: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -101,6 +89,7 @@ export default function MemoriesScreen() {
 
     const toggleActive = (id: string) => {
         hapticsSelection();
+        // In a real app, we'd call an API to toggle active state
         setMemories(current =>
             current.map(m =>
                 m.id === id ? { ...m, isActive: !m.isActive } : m
@@ -108,32 +97,46 @@ export default function MemoriesScreen() {
         );
     };
 
-    const handleAddMemory = () => {
+    const handleAddMemory = async () => {
         if (!title.trim() || !description.trim()) return;
 
+        setSubmitting(true);
         const newTags = tagInput
             .split(',')
             .map(tag => tag.trim())
             .filter(tag => tag.length > 0);
 
-        const newMemory: Memory = {
-            id: Date.now().toString(),
-            title: title.trim(),
-            description: description.trim(),
-            tags: newTags.length > 0 ? newTags : ['Memory'],
-            date: new Date().toISOString().split('T')[0],
-            isActive: true,
-        };
+        try {
+            const newMemory = await ApiService.memories.create({
+                title: title.trim(),
+                description: description.trim(),
+                tags: newTags.length > 0 ? newTags : ['Memory'],
+                date: new Date().toISOString().split('T')[0],
+            });
 
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setMemories([newMemory, ...memories]);
+            hapticsSuccess();
+            await checkState(); // Update context to reflect user has created memory
 
-        // Reset form
-        setTitle('');
-        setDescription('');
-        setTagInput('');
-        setIsFormVisible(false);
-        Keyboard.dismiss();
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setMemories([newMemory, ...memories]);
+
+            // Reset form
+            setTitle('');
+            setDescription('');
+            setTagInput('');
+            setIsFormVisible(false);
+            Keyboard.dismiss();
+
+            // If this was the first memory, alert the user
+            Alert.alert("Memory Added", "Great! Your fixed commitments are stored.", [
+                { text: "Continue", onPress: () => navigation.navigate('Dashboard') } // Dashboard will handle next redirect
+            ]);
+
+        } catch (e) {
+            Alert.alert("Error", "Failed to save memory");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const renderItem = ({ item }: { item: Memory }) => {
@@ -231,27 +234,36 @@ export default function MemoriesScreen() {
                         value={tagInput}
                         onChangeText={setTagInput}
                     />
-                    <TouchableOpacity style={styles.submitButton} onPress={handleAddMemory}>
-                        <Text style={styles.submitButtonText}>Save Memory</Text>
+                    <TouchableOpacity style={styles.submitButton} onPress={handleAddMemory} disabled={submitting}>
+                        {submitting ? (
+                            <ActivityIndicator color={Colors.white} />
+                        ) : (
+                            <Text style={styles.submitButtonText}>Save Memory</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             )}
 
-            <FlatList
-                data={memories}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-                ListHeaderComponent={
-                    <View style={styles.infoContainer}>
-                        <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
-                        <Text style={styles.infoText}>
-                            Mark memories as <Text style={styles.infoHighlight}>Active</Text> to reflect on them in your daily plan.
-                        </Text>
-                    </View>
-                }
-            />
+            {loading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={memories}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    ListHeaderComponent={
+                        <View style={styles.infoContainer}>
+                            <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
+                            <Text style={styles.infoText}>
+                                Mark memories as <Text style={styles.infoHighlight}>Active</Text> to reflect on them in your daily plan.
+                            </Text>
+                        </View>
+                    }
+                />)}
         </SafeAreaView>
     );
 }

@@ -2,41 +2,91 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+    Alert,
     Dimensions,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
+    ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from '@react-navigation/native';
 import Colors from "../../constants/colors";
 import Fonts from "../../constants/fonts";
+import { useApp } from '@/src/context/AppContext';
+import { ApiService, ScheduleItem } from '@/src/services/api';
+import { hapticsSuccess } from '@/src/utils/haptics';
 
 const { width } = Dimensions.get("window");
 
-// Mock Data for Timeline
-const SCHEDULE_ITEMS = [
-    { id: "1", start: 9, duration: 1.5, title: "Deep Work: Coding", category: "Work", color: "#E0F2FE", textColor: "#0369A1" },
-    { id: "2", start: 11, duration: 1, title: "Team Standup", category: "Meeting", color: "#FCE7F3", textColor: "#BE185D" },
-    { id: "3", start: 13, duration: 1, title: "Lunch Break", category: "Health", color: "#DCFCE7", textColor: "#15803D" },
-    { id: "4", start: 14.5, duration: 2, title: "Design Review", category: "Work", color: "#F3E8FF", textColor: "#7E22CE" },
-    { id: "5", start: 17, duration: 1, title: "Gym", category: "Health", color: "#FFEDD5", textColor: "#C2410C" },
-];
-
-const UPCOMING_TASKS = [
-    { id: "t1", title: "Review PR #42", due: "Today", icon: "git-pull-request-outline" },
-    { id: "t2", title: "Pay electricity bill", due: "Tomorrow", icon: "receipt-outline" },
-    { id: "t3", title: "Call Mom", due: "Sunday", icon: "call-outline" },
-];
-
 export default function DashboardScreen() {
+    const navigation = useNavigation<any>();
+    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [loadingSchedule, setLoadingSchedule] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
         return () => clearInterval(timer);
     }, []);
+
+    // Navigation Logic for Onboarding Flow
+    useEffect(() => {
+        const checkFlow = async () => {
+             // Small delay to ensure context is loaded and UI is ready
+             await new Promise(r => setTimeout(r, 500));
+             
+             if (!hasCreatedMemory) {
+                 Alert.alert("Welcome!", "First, let's add some fixed commitments like your university schedule.", [
+                     { text: "OK", onPress: () => navigation.navigate('Memories') }
+                 ]);
+             } else if (!hasCreatedGoal) {
+                 Alert.alert("Great!", "Now, let's define some goals you want to achieve.", [
+                     { text: "OK", onPress: () => navigation.navigate('Goals') }
+                 ]);
+             }
+        };
+        checkFlow();
+    }, [hasCreatedMemory, hasCreatedGoal, navigation]);
+
+    // Fetch Schedule
+    useEffect(() => {
+        if (isScheduleGenerated) {
+            loadSchedule();
+        }
+    }, [isScheduleGenerated]);
+
+    const loadSchedule = async () => {
+        setLoadingSchedule(true);
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const result = await ApiService.schedule.getDaily(today);
+            setScheduleItems(result.items);
+        } catch (e) {
+            console.error("Failed to load schedule", e);
+        } finally {
+            setLoadingSchedule(false);
+        }
+    };
+
+    const handleGenerateSchedule = async () => {
+        setIsGenerating(true);
+        try {
+            const result = await ApiService.schedule.generate();
+            hapticsSuccess();
+            Alert.alert("Success", result.message);
+            await checkState(); // Update context flags
+            await loadSchedule();
+        } catch (e) {
+            Alert.alert("Error", "Failed to generate schedule");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const formattedTime = useMemo(() => {
         return currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -44,14 +94,24 @@ export default function DashboardScreen() {
 
     const currentTask = useMemo(() => {
         const currentHour = currentTime.getHours() + currentTime.getMinutes() / 60;
-        return SCHEDULE_ITEMS.find(item => currentHour >= item.start && currentHour < item.start + item.duration);
-    }, [currentTime]);
+        return scheduleItems.find(item => {
+            const start = new Date(item.startTime).getHours();
+            const end = new Date(item.endTime).getHours();
+            // Simple check, can be improved with full date parsing
+            return currentHour >= start && currentHour < end;
+        });
+    }, [currentTime, scheduleItems]);
 
     // Generate 24h time slots
     const timeSlots = Array.from({ length: 24 }, (_, i) => i);
 
     const renderTimeSlot = (hour: number) => {
-        const itemsInSlot = SCHEDULE_ITEMS.filter(item => Math.floor(item.start) === hour);
+        // Filter items that start in this hour
+        const itemsInSlot = scheduleItems.filter(item => {
+            const startHour = new Date(item.startTime).getHours();
+            return startHour === hour;
+        });
+        
         const isCurrentHour = currentTime.getHours() === hour;
 
         return (
@@ -66,26 +126,43 @@ export default function DashboardScreen() {
                 {/* Timeline Content */}
                 <View style={styles.timelineContent}>
                     <View style={styles.gridLine} />
-                    {itemsInSlot.map(item => (
+                    {itemsInSlot.map(item => {
+                         const start = new Date(item.startTime);
+                         const end = new Date(item.endTime);
+                         const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                         const startMinutes = start.getMinutes();
+                         
+                         // Determine color based on type
+                         let bgColor = "#E0F2FE";
+                         let textColor = "#0369A1";
+                         if (item.type === 'goal_task') {
+                             bgColor = "#F3E8FF";
+                             textColor = "#7E22CE";
+                         } else if (item.type === 'fixed_commitment') {
+                             bgColor = "#FFEDD5";
+                             textColor = "#C2410C";
+                         }
+
+                        return (
                         <View
                             key={item.id}
                             style={[
                                 styles.eventCard,
                                 {
-                                    backgroundColor: item.color,
-                                    top: (item.start % 1) * 60, // Offset based on minutes
-                                    height: item.duration * 60, // Height based on duration (1h = 60px approx)
+                                    backgroundColor: bgColor,
+                                    top: (startMinutes / 60) * 60,
+                                    height: durationHours * 60,
                                 }
                             ]}
                         >
-                            <Text style={[styles.eventTitle, { color: item.textColor }]} numberOfLines={1}>
+                            <Text style={[styles.eventTitle, { color: textColor }]} numberOfLines={1}>
                                 {item.title}
                             </Text>
-                            <Text style={[styles.eventCategory, { color: item.textColor }]}>
-                                {item.category}
+                            <Text style={[styles.eventCategory, { color: textColor }]}>
+                                {item.description || item.type}
                             </Text>
                         </View>
-                    ))}
+                    )})} 
                     {/* Current Time Indicator Line */}
                     {isCurrentHour && (
                         <View style={[styles.currentTimeLine, { top: currentTime.getMinutes() }]} >
@@ -131,18 +208,44 @@ export default function DashboardScreen() {
                 {/* Middle Section: Timeline */}
                 <View style={styles.sectionContainer}>
                     <Text style={styles.sectionHeader}>Timeline</Text>
-                    <View style={styles.timelineContainer}>
-                        {timeSlots.slice(6, 23).map(renderTimeSlot)}
-                        {/* Slicing 6am to 11pm for cleaner initial view, could be full 24h */}
-                    </View>
+                    {loadingSchedule ? (
+                         <ActivityIndicator size="large" color={Colors.primary} />
+                    ) : scheduleItems.length === 0 && !hasCreatedMemory ? (
+                        <Text style={{ paddingHorizontal: 24, color: Colors.gray[500] }}>
+                            Start by adding your memories (fixed schedule).
+                        </Text>
+                    ) : (
+                        <View style={styles.timelineContainer}>
+                            {timeSlots.slice(6, 23).map(renderTimeSlot)}
+                        </View>
+                    )}
                 </View>
 
             </ScrollView>
+
+            {/* Generate Schedule FAB */}
+            {hasCreatedMemory && hasCreatedGoal && !isScheduleGenerated && (
+                <TouchableOpacity 
+                    style={styles.fab} 
+                    onPress={handleGenerateSchedule}
+                    disabled={isGenerating}
+                >
+                    {isGenerating ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <>
+                            <Ionicons name="sparkles" size={24} color="white" />
+                            <Text style={styles.fabText}>Generate Schedule</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            )}
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    // ... existing styles ...
     container: {
         flex: 1,
         backgroundColor: Colors.background.primary,
@@ -283,46 +386,28 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.error,
         marginLeft: -4,
     },
-
-    // Tasks Styles
-    tasksHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingRight: 24,
-    },
-    tasksList: {
-        paddingHorizontal: 24,
-    },
-    taskItem: {
+    
+    // FAB Styles
+    fab: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        backgroundColor: Colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.background.primary,
         paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.gray[100],
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+        elevation: 8,
+        gap: 8,
     },
-    taskIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: Colors.gray[50],
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 16,
-    },
-    taskContent: {
-        flex: 1,
-    },
-    taskTitle: {
-        fontSize: 15,
-        fontFamily: Fonts.primary.medium,
-        color: Colors.text.primary,
-        marginBottom: 2,
-    },
-    taskDue: {
-        fontSize: 12,
-        fontFamily: Fonts.primary.regular,
-        color: Colors.gray[500],
-    },
+    fabText: {
+        color: 'white',
+        fontFamily: Fonts.primary.bold,
+        fontSize: 16,
+    }
 });

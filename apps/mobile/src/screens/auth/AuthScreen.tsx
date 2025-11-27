@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -16,6 +18,7 @@ import {
 import Colors from '../../constants/colors';
 import { BorderRadius, FontSizes, Spacing } from '../../constants/dimensions';
 import Fonts from '../../constants/fonts';
+import { useApp } from '@/src/context/AppContext';
 
 interface AuthScreenProps {
     onAuthSuccess?: () => void;
@@ -23,6 +26,7 @@ interface AuthScreenProps {
 
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     const router = useRouter();
+    const { login, register, isLoading } = useApp();
     const [mode, setMode] = useState<'signup' | 'login'>('signup');
     const [formData, setFormData] = useState({
         name: '',
@@ -48,20 +52,27 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         }
     };
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (isFormValid()) {
             hapticsSuccess();
-            // Here you would normally handle authentication
-            console.log(`${mode} attempted with:`, formData);
-
-            if (onAuthSuccess) {
-                onAuthSuccess();
-            } else {
-                router.replace('/dashboard');
+            try {
+                if (mode === 'signup') {
+                    await register(formData.name, formData.email, formData.password);
+                } else {
+                    await login(formData.email, formData.password);
+                }
+                
+                if (onAuthSuccess) {
+                    onAuthSuccess();
+                } else {
+                    router.replace('/dashboard');
+                }
+            } catch (error: any) {
+                hapticsWarning();
+                Alert.alert('Authentication Failed', error.message || 'Something went wrong');
             }
         } else {
             hapticsWarning();
-            console.log('Form is invalid');
         }
     };
 
@@ -166,26 +177,30 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     </View>
 
 
-                    {/* Continue Button */}
+                        {/* Continue Button */}
                     <View style={styles.continueButtonSection}>
                         <TouchableOpacity
                             style={[
                                 styles.continueButton,
-                                isFormValid() ? styles.continueButtonEnabled : styles.continueButtonDisabled
+                                isFormValid() && !isLoading ? styles.continueButtonEnabled : styles.continueButtonDisabled
                             ]}
                             onPress={handleContinue}
-                            disabled={!isFormValid()}
+                            disabled={!isFormValid() || isLoading}
 
                         >
-                            <Text style={[
-                                styles.continueButtonText,
-                                isFormValid() ? styles.continueButtonTextEnabled : styles.continueButtonTextDisabled
-                            ]}>
-                                Continue
-                            </Text>
+                            {isLoading ? (
+                                <ActivityIndicator color={Colors.white} />
+                            ) : (
+                                <Text style={[
+                                    styles.continueButtonText,
+                                    isFormValid() ? styles.continueButtonTextEnabled : styles.continueButtonTextDisabled
+                                ]}>
+                                    Continue
+                                </Text>
+                            )}
                         </TouchableOpacity>
                         {/* Switch Mode */}
-                        <TouchableOpacity onPress={toggleMode} style={styles.switchModeContainer}>
+                        <TouchableOpacity onPress={toggleMode} style={styles.switchModeContainer} disabled={isLoading}>
                             <Text style={styles.switchModeText}>
                                 {mode === 'signup' ? 'Have an account? ' : "Don't have an account? "}
                                 <Text style={styles.switchModeLink}>

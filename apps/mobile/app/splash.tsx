@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { useApp } from '@/src/context/AppContext';
 
 const SPLASH_DELAY = 100; // 3 seconds
 
@@ -55,21 +56,40 @@ export default function SplashScreen() {
         };
 
         // Start all animations
-        Animated.parallel([
-            createLineAnimation(firstLineOpacity, firstLineTranslateY, 0),
-            createLineAnimation(secondLineOpacity, secondLineTranslateY, 600),
-            createLineAnimation(thirdLineOpacity, thirdLineTranslateY, 1200),
-        ]).start();
+    const animation = Animated.parallel([
+      createLineAnimation(firstLineOpacity, firstLineTranslateY, 0),
+      createLineAnimation(secondLineOpacity, secondLineTranslateY, 600),
+      createLineAnimation(thirdLineOpacity, thirdLineTranslateY, 1200),
+    ]);
+    animation.start();
 
-        // Navigate to auth screen after splash delay
-        const timer = setTimeout(() => {
-            router.replace('/auth');
-        }, SPLASH_DELAY);
+    // Navigate to auth screen after splash delay
+    const timer = setTimeout(() => {
+        // Navigation logic is handled by AuthObserver, but we can force check here if needed
+        // However, we should wait for animation AND auth check.
+    }, SPLASH_DELAY);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
-        return () => clearTimeout(timer);
-    }, []);
+  // Integration with AppContext
+  const { isLoading, isAuthenticated } = useApp();
 
-    // --- Font Loading Check ---
+  useEffect(() => {
+    if (!isLoading) {
+        // Wait for minimum splash time if needed, or just go
+        const minTime = setTimeout(() => {
+            if (isAuthenticated) {
+                router.replace('/dashboard');
+            } else {
+                router.replace('/auth');
+            }
+        }, 2500); // slightly less than 3s to allow animation to finish approx
+        return () => clearTimeout(minTime);
+    }
+  }, [isLoading, isAuthenticated]);
+
+  // --- Font Loading Check ---
     if (!fontsLoaded) {
         return null; // Don't render anything until fonts are loaded
     }
