@@ -19,6 +19,8 @@ model User {
   memories      Memory[]
   goals         Goal[]
   scheduleItems ScheduleItem[]
+  settings      UserSettings?
+  timetableSlots TimetableSlot[]
 }
 
 model Memory {
@@ -60,6 +62,29 @@ model ScheduleItem {
   isCompleted Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model UserSettings {
+  id                   String   @id @default(uuid())
+  theme                String   @default("system") // light | dark | system
+  notificationsEnabled Boolean  @default(true)
+  timezone             String   @default("UTC")
+  updatedAt            DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model TimetableSlot {
+  id        String   @id @default(uuid())
+  time      String   // HH:mm
+  activity  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
