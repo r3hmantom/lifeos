@@ -6,3 +6,61 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memories      Memory[]
+  goals         Goal[]
+  scheduleItems ScheduleItem[]
+}
+
+model Memory {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  tags        String[]
+  date        DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Goal {
+  id        String   @id @default(uuid())
+  title     String
+  focus     String // Category e.g., Career, Health
+  deadline  DateTime
+  priority  String // High | Medium | Low
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model ScheduleItem {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  type        String // fixed_commitment | goal_task | routine | other
+  relatedId   String? // ID of related memory or goal
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
