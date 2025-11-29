@@ -55,20 +55,6 @@
       "notificationsEnabled": "boolean",
       "timezone": "string",
       "updatedAt": "string (ISO datetime)"
-    },
-
-    "TimetableSlot": {
-      "id": "string (uuid)",
-      "userId": "string (uuid)",
-      "time": "string (HH:mm)",
-      "activity": "string",
-      "isActive": "boolean",
-      "createdAt": "string (ISO datetime)",
-      "updatedAt": "string (ISO datetime)"
-    },
-
-    "TimetableTemplateResponse": {
-      "data": "TimetableSlot[]"
     }
   },
   "endpoints": {
@@ -201,43 +187,6 @@
           "timezone": "string (optional)"
         },
         "response": "UserSettings"
-      }
-    },
-
-    "timetable": {
-      "getAll": {
-        "method": "GET",
-        "path": "/timetable",
-        "headers": { "Authorization": "Bearer <token>" },
-        "response": "TimetableTemplateResponse"
-      },
-      "create": {
-        "method": "POST",
-        "path": "/timetable",
-        "headers": { "Authorization": "Bearer <token>" },
-        "body": {
-          "time": "string",
-          "activity": "string",
-          "isActive": "boolean"
-        },
-        "response": "TimetableSlot"
-      },
-      "update": {
-        "method": "PATCH",
-        "path": "/timetable/{id}",
-        "headers": { "Authorization": "Bearer <token>" },
-        "body": {
-          "time": "string (optional)",
-          "activity": "string (optional)",
-          "isActive": "boolean (optional)"
-        },
-        "response": "TimetableSlot"
-      },
-      "delete": {
-        "method": "DELETE",
-        "path": "/timetable/{id}",
-        "headers": { "Authorization": "Bearer <token>" },
-        "response": { "message": "Slot deleted" }
       }
     }
   }

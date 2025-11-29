@@ -99,27 +99,6 @@ const options = {
             updatedAt: { type: "string", format: "date-time" },
           },
         },
-        TimetableSlot: {
-          type: "object",
-          properties: {
-            id: { type: "string", format: "uuid" },
-            userId: { type: "string", format: "uuid" },
-            time: { type: "string", description: "HH:mm" },
-            activity: { type: "string" },
-            isActive: { type: "boolean" },
-            createdAt: { type: "string", format: "date-time" },
-            updatedAt: { type: "string", format: "date-time" },
-          },
-        },
-        TimetableTemplateResponse: {
-          type: "object",
-          properties: {
-            data: {
-              type: "array",
-              items: { $ref: "#/components/schemas/TimetableSlot" },
-            },
-          },
-        },
       },
     },
     security: [

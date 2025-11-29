@@ -20,7 +20,6 @@ model User {
   goals         Goal[]
   scheduleItems ScheduleItem[]
   settings      UserSettings?
-  timetableSlots TimetableSlot[]
 }
 
 model Memory {
@@ -75,17 +74,5 @@ model UserSettings {
   updatedAt            DateTime @updatedAt
 
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
-}
-
-model TimetableSlot {
-  id        String   @id @default(uuid())
-  time      String   // HH:mm
-  activity  String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String
   user   User   @relation(fields: [userId], references: [id])
 }
