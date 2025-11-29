@@ -83,6 +83,54 @@ Goal management endpoints
 | --------------- | ------ |
 | bearerAuth |  |
 
+### [PATCH] /goals/{id}
+**Update a goal**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: { **"title"**: string, **"focus"**: string, **"deadline"**: dateTime, **"priority"**: string, <br>**Available values:** "High", "Medium", "Low", **"isActive"**: boolean }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Goal updated successfully | **application/json**: [Goal](#goal)<br> |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+### [DELETE] /goals/{id}
+**Delete a goal**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Goal deleted successfully |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
 ---
 ## Memories
 Memory management endpoints
@@ -116,6 +164,54 @@ Memory management endpoints
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Memory created successfully | **application/json**: [Memory](#memory)<br> |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+### [PATCH] /memories/{id}
+**Update a memory**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: { **"title"**: string, **"description"**: string, **"tags"**: [ string ], **"date"**: dateTime, **"isActive"**: boolean }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Memory updated successfully | **application/json**: [Memory](#memory)<br> |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+### [DELETE] /memories/{id}
+**Delete a memory**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Memory deleted successfully |
 
 ##### Security
 

@@ -73,4 +73,68 @@ router.get("/", authMiddleware, memoryController.getAllMemories);
  */
 router.post("/", authMiddleware, memoryController.createMemory);
 
+/**
+ * @swagger
+ * /memories/{id}:
+ *   patch:
+ *     summary: Update a memory
+ *     tags: [Memories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Memory updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Memory'
+ */
+router.patch("/:id", authMiddleware, memoryController.updateMemory);
+
+/**
+ * @swagger
+ * /memories/{id}:
+ *   delete:
+ *     summary: Delete a memory
+ *     tags: [Memories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Memory deleted successfully
+ */
+router.delete("/:id", authMiddleware, memoryController.deleteMemory);
+
 module.exports = router;

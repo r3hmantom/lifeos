@@ -107,6 +107,33 @@
           "date": "string (ISO 8601 date)"
         },
         "response": "Memory"
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/memories/{id}",
+        "description": "Update a memory",
+        "headers": {
+          "Authorization": "Bearer <token>"
+        },
+        "body": {
+          "title": "string (optional)",
+          "description": "string (optional)",
+          "tags": "string[] (optional)",
+          "date": "string (ISO 8601 date, optional)",
+          "isActive": "boolean (optional)"
+        },
+        "response": "Memory"
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/memories/{id}",
+        "description": "Delete a memory",
+        "headers": {
+          "Authorization": "Bearer <token>"
+        },
+        "response": {
+          "message": "Memory deleted successfully"
+        }
       }
     },
     "goals": {
@@ -135,6 +162,33 @@
           "priority": "string (High | Medium | Low)"
         },
         "response": "Goal"
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/goals/{id}",
+        "description": "Update a goal",
+        "headers": {
+          "Authorization": "Bearer <token>"
+        },
+        "body": {
+          "title": "string (optional)",
+          "focus": "string (optional)",
+          "deadline": "string (optional)",
+          "priority": "string (High | Medium | Low, optional)",
+          "isActive": "boolean (optional)"
+        },
+        "response": "Goal"
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/goals/{id}",
+        "description": "Delete a goal",
+        "headers": {
+          "Authorization": "Bearer <token>"
+        },
+        "response": {
+          "message": "Goal deleted successfully"
+        }
       }
     },
     "schedule": {

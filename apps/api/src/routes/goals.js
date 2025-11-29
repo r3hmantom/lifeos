@@ -73,4 +73,67 @@ router.get("/", authMiddleware, goalController.getAllGoals);
  */
 router.post("/", authMiddleware, goalController.createGoal);
 
+/**
+ * @swagger
+ * /goals/{id}:
+ *   patch:
+ *     summary: Update a goal
+ *     tags: [Goals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               focus:
+ *                 type: string
+ *               deadline:
+ *                 type: string
+ *                 format: date-time
+ *               priority:
+ *                 type: string
+ *                 enum: [High, Medium, Low]
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Goal updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Goal'
+ */
+router.patch("/:id", authMiddleware, goalController.updateGoal);
+
+/**
+ * @swagger
+ * /goals/{id}:
+ *   delete:
+ *     summary: Delete a goal
+ *     tags: [Goals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Goal deleted successfully
+ */
+router.delete("/:id", authMiddleware, goalController.deleteGoal);
+
 module.exports = router;
