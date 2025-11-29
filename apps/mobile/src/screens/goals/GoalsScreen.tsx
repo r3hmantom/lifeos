@@ -78,12 +78,53 @@ export default function GoalsScreen() {
         setIsFormVisible(!isFormVisible);
     };
 
-    const toggleActive = (id: string) => {
+    const toggleActive = async (id: string) => {
         hapticsSelection();
+        const goal = goals.find(g => g.id === id);
+        if (!goal) return;
+
+        const originalState = goal.isActive;
+
+        // Optimistic update
         setGoals(current =>
             current.map(g =>
                 g.id === id ? { ...g, isActive: !g.isActive } : g
             )
+        );
+
+        try {
+            await ApiService.goals.update(id, { isActive: !originalState });
+        } catch (e) {
+            // Revert on error
+            setGoals(current =>
+                current.map(g =>
+                    g.id === id ? { ...g, isActive: originalState } : g
+                )
+            );
+            Alert.alert("Error", "Failed to update goal status");
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        Alert.alert(
+            "Delete Goal",
+            "Are you sure you want to delete this goal?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await ApiService.goals.delete(id);
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setGoals(current => current.filter(g => g.id !== id));
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to delete goal");
+                        }
+                    }
+                }
+            ]
         );
     };
 
@@ -205,6 +246,14 @@ export default function GoalsScreen() {
                         <View style={styles.detailRow}>
                             <Ionicons name="locate-outline" size={16} color={Colors.gray[500]} />
                             <Text style={styles.detailText}>Focus Area: {item.focus}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', marginTop: 8 }}>
+                            <TouchableOpacity
+                                onPress={() => handleDelete(item.id)}
+                                style={{ padding: 8 }}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 )}

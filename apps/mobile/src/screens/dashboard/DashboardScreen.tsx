@@ -1,23 +1,23 @@
+import { useApp } from '@/src/context/AppContext';
+import { ApiService, ScheduleItem, TimetableSlot } from '@/src/services/api';
+import { hapticsSuccess } from '@/src/utils/haptics';
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     Dimensions,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
-    ActivityIndicator
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from '@react-navigation/native';
 import Colors from "../../constants/colors";
 import Fonts from "../../constants/fonts";
-import { useApp } from '@/src/context/AppContext';
-import { ApiService, ScheduleItem } from '@/src/services/api';
-import { hapticsSuccess } from '@/src/utils/haptics';
 
 const { width } = Dimensions.get("window");
 
@@ -26,6 +26,7 @@ export default function DashboardScreen() {
     const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+    const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSchedule, setLoadingSchedule] = useState(false);
 
@@ -37,18 +38,18 @@ export default function DashboardScreen() {
     // Navigation Logic for Onboarding Flow
     useEffect(() => {
         const checkFlow = async () => {
-             // Small delay to ensure context is loaded and UI is ready
-             await new Promise(r => setTimeout(r, 500));
-             
-             if (!hasCreatedMemory) {
-                 Alert.alert("Welcome!", "First, let's add some fixed commitments like your university schedule.", [
-                     { text: "OK", onPress: () => navigation.navigate('Memories') }
-                 ]);
-             } else if (!hasCreatedGoal) {
-                 Alert.alert("Great!", "Now, let's define some goals you want to achieve.", [
-                     { text: "OK", onPress: () => navigation.navigate('Goals') }
-                 ]);
-             }
+            // Small delay to ensure context is loaded and UI is ready
+            await new Promise(r => setTimeout(r, 500));
+
+            if (!hasCreatedMemory) {
+                Alert.alert("Welcome!", "First, let's add some fixed commitments like your university schedule.", [
+                    { text: "OK", onPress: () => navigation.navigate('Memories') }
+                ]);
+            } else if (!hasCreatedGoal) {
+                Alert.alert("Great!", "Now, let's define some goals you want to achieve.", [
+                    { text: "OK", onPress: () => navigation.navigate('Goals') }
+                ]);
+            }
         };
         checkFlow();
     }, [hasCreatedMemory, hasCreatedGoal, navigation]);
@@ -64,8 +65,12 @@ export default function DashboardScreen() {
         setLoadingSchedule(true);
         try {
             const today = new Date().toISOString().split('T')[0];
-            const result = await ApiService.schedule.getDaily(today);
-            setScheduleItems(result.items);
+            const [scheduleResult, timetableResult] = await Promise.all([
+                ApiService.schedule.getDaily(today),
+                ApiService.timetable.getAll()
+            ]);
+            setScheduleItems(scheduleResult.items);
+            setTimetableSlots(timetableResult.filter(t => t.isActive));
         } catch (e) {
             console.error("Failed to load schedule", e);
         } finally {
@@ -76,13 +81,25 @@ export default function DashboardScreen() {
     const handleGenerateSchedule = async () => {
         setIsGenerating(true);
         try {
-            const result = await ApiService.schedule.generate();
+            const today = new Date().toISOString().split('T')[0];
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+            const result = await ApiService.schedule.generate({
+                date: today,
+                timezone: timezone,
+                preferences: {
+                    startOfDay: "09:00",
+                    endOfDay: "22:00"
+                }
+            });
+
             hapticsSuccess();
             Alert.alert("Success", result.message);
             await checkState(); // Update context flags
             await loadSchedule();
         } catch (e) {
             Alert.alert("Error", "Failed to generate schedule");
+            console.error(e);
         } finally {
             setIsGenerating(false);
         }
@@ -102,6 +119,24 @@ export default function DashboardScreen() {
         });
     }, [currentTime, scheduleItems]);
 
+    const parseTime = (timeStr: string) => {
+        try {
+            const lower = timeStr.toLowerCase().trim();
+            const isPm = lower.includes('pm');
+            const isAm = lower.includes('am');
+            const cleanTime = lower.replace(/[a-z]/g, '').trim();
+            const [h, m] = cleanTime.split(':').map(Number);
+
+            let hour = h;
+            if (isPm && hour < 12) hour += 12;
+            if (isAm && hour === 12) hour = 0;
+
+            return { hour, minute: m || 0 };
+        } catch {
+            return { hour: 0, minute: 0 };
+        }
+    };
+
     // Generate 24h time slots
     const timeSlots = Array.from({ length: 24 }, (_, i) => i);
 
@@ -111,7 +146,13 @@ export default function DashboardScreen() {
             const startHour = new Date(item.startTime).getHours();
             return startHour === hour;
         });
-        
+
+        // Filter timetable slots for this hour
+        const slotsInHour = timetableSlots.filter(slot => {
+            const { hour: h } = parseTime(slot.time);
+            return h === hour;
+        });
+
         const isCurrentHour = currentTime.getHours() === hour;
 
         return (
@@ -127,42 +168,82 @@ export default function DashboardScreen() {
                 <View style={styles.timelineContent}>
                     <View style={styles.gridLine} />
                     {itemsInSlot.map(item => {
-                         const start = new Date(item.startTime);
-                         const end = new Date(item.endTime);
-                         const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                         const startMinutes = start.getMinutes();
-                         
-                         // Determine color based on type
-                         let bgColor = "#E0F2FE";
-                         let textColor = "#0369A1";
-                         if (item.type === 'goal_task') {
-                             bgColor = "#F3E8FF";
-                             textColor = "#7E22CE";
-                         } else if (item.type === 'fixed_commitment') {
-                             bgColor = "#FFEDD5";
-                             textColor = "#C2410C";
-                         }
+                        const start = new Date(item.startTime);
+                        const end = new Date(item.endTime);
+                        const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                        const startMinutes = start.getMinutes();
+
+                        // Determine color based on type
+                        let bgColor = "#E0F2FE";
+                        let textColor = "#0369A1";
+                        if (item.type === 'goal_task') {
+                            bgColor = "#F3E8FF";
+                            textColor = "#7E22CE";
+                        } else if (item.type === 'fixed_commitment') {
+                            bgColor = "#FFEDD5";
+                            textColor = "#C2410C";
+                        }
 
                         return (
-                        <View
-                            key={item.id}
-                            style={[
-                                styles.eventCard,
-                                {
-                                    backgroundColor: bgColor,
-                                    top: (startMinutes / 60) * 60,
-                                    height: durationHours * 60,
-                                }
-                            ]}
-                        >
-                            <Text style={[styles.eventTitle, { color: textColor }]} numberOfLines={1}>
-                                {item.title}
-                            </Text>
-                            <Text style={[styles.eventCategory, { color: textColor }]}>
-                                {item.description || item.type}
-                            </Text>
-                        </View>
-                    )})} 
+                            <View
+                                key={item.id}
+                                style={[
+                                    styles.eventCard,
+                                    {
+                                        backgroundColor: bgColor,
+                                        top: (startMinutes / 60) * 60,
+                                        height: durationHours * 60,
+                                    }
+                                ]}
+                            >
+                                <Text style={[styles.eventTitle, { color: textColor }]} numberOfLines={1}>
+                                    {item.title}
+                                </Text>
+                                <Text style={[styles.eventCategory, { color: textColor }]}>
+                                    {item.description || item.type}
+                                </Text>
+                            </View>
+                        )
+                    })}
+
+                    {/* Render Timetable Slots (Routines) */}
+                    {slotsInHour.map(slot => {
+                        const { minute } = parseTime(slot.time);
+
+                        // Avoid duplicates if already in schedule items
+                        const isDuplicate = itemsInSlot.some(item =>
+                            (item.type === 'routine' || item.title === slot.activity) &&
+                            Math.abs(new Date(item.startTime).getMinutes() - minute) < 10
+                        );
+
+                        if (isDuplicate) return null;
+
+                        return (
+                            <View
+                                key={`slot-${slot.id}`}
+                                style={[
+                                    styles.eventCard,
+                                    {
+                                        backgroundColor: Colors.gray[50] || '#F9FAFB',
+                                        borderColor: Colors.gray[300] || '#D1D5DB',
+                                        borderWidth: 1,
+                                        borderStyle: 'dashed',
+                                        top: (minute / 60) * 60,
+                                        height: 50, // Default height for slots
+                                        zIndex: -1 // Behind real events
+                                    }
+                                ]}
+                            >
+                                <Text style={[styles.eventTitle, { color: Colors.gray[600] || '#4B5563' }]} numberOfLines={1}>
+                                    {slot.activity}
+                                </Text>
+                                <Text style={[styles.eventCategory, { color: Colors.gray[500] || '#6B7280' }]}>
+                                    Routine
+                                </Text>
+                            </View>
+                        );
+                    })}
+
                     {/* Current Time Indicator Line */}
                     {isCurrentHour && (
                         <View style={[styles.currentTimeLine, { top: currentTime.getMinutes() }]} >
@@ -209,7 +290,7 @@ export default function DashboardScreen() {
                 <View style={styles.sectionContainer}>
                     <Text style={styles.sectionHeader}>Timeline</Text>
                     {loadingSchedule ? (
-                         <ActivityIndicator size="large" color={Colors.primary} />
+                        <ActivityIndicator size="large" color={Colors.primary} />
                     ) : scheduleItems.length === 0 && !hasCreatedMemory ? (
                         <Text style={{ paddingHorizontal: 24, color: Colors.gray[500] }}>
                             Start by adding your memories (fixed schedule).
@@ -225,8 +306,8 @@ export default function DashboardScreen() {
 
             {/* Generate Schedule FAB */}
             {hasCreatedMemory && hasCreatedGoal && !isScheduleGenerated && (
-                <TouchableOpacity 
-                    style={styles.fab} 
+                <TouchableOpacity
+                    style={styles.fab}
                     onPress={handleGenerateSchedule}
                     disabled={isGenerating}
                 >
@@ -245,7 +326,6 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-    // ... existing styles ...
     container: {
         flex: 1,
         backgroundColor: Colors.background.primary,
@@ -273,7 +353,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     timeContainer: {
-        flexDirection: 'column', // Stacked for cleaner mobile layout, or row if space permits
+        flexDirection: 'column',
         gap: 8,
     },
     largeTime: {
@@ -322,13 +402,13 @@ const styles = StyleSheet.create({
     },
     timeSlotContainer: {
         flexDirection: 'row',
-        height: 60, // Fixed height per hour slot
+        height: 60,
     },
     timeLabelContainer: {
         width: 50,
         alignItems: 'flex-start',
         justifyContent: 'flex-start',
-        paddingTop: 0, // Align with top grid line
+        paddingTop: 0,
     },
     timeLabel: {
         fontSize: 12,
@@ -386,7 +466,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.error,
         marginLeft: -4,
     },
-    
+
     // FAB Styles
     fab: {
         position: 'absolute',

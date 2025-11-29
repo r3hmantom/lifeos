@@ -87,13 +87,53 @@ export default function MemoriesScreen() {
         setIsFormVisible(!isFormVisible);
     };
 
-    const toggleActive = (id: string) => {
+    const toggleActive = async (id: string) => {
         hapticsSelection();
-        // In a real app, we'd call an API to toggle active state
+        const memory = memories.find(m => m.id === id);
+        if (!memory) return;
+
+        const originalState = memory.isActive;
+
+        // Optimistic update
         setMemories(current =>
             current.map(m =>
                 m.id === id ? { ...m, isActive: !m.isActive } : m
             )
+        );
+
+        try {
+            await ApiService.memories.update(id, { isActive: !originalState });
+        } catch (e) {
+            // Revert on error
+            setMemories(current =>
+                current.map(m =>
+                    m.id === id ? { ...m, isActive: originalState } : m
+                )
+            );
+            Alert.alert("Error", "Failed to update memory status");
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        Alert.alert(
+            "Delete Memory",
+            "Are you sure you want to delete this memory?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await ApiService.memories.delete(id);
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setMemories(current => current.filter(m => m.id !== id));
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to delete memory");
+                        }
+                    }
+                }
+            ]
         );
     };
 
@@ -193,7 +233,15 @@ export default function MemoriesScreen() {
                 {isExpanded && (
                     <View style={styles.cardBody}>
                         <Text style={styles.cardDescription}>{item.description}</Text>
-                        <Text style={styles.cardDate}>{item.date}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={styles.cardDate}>{new Date(item.date).toLocaleDateString()}</Text>
+                            <TouchableOpacity
+                                onPress={() => handleDelete(item.id)}
+                                style={{ padding: 8 }}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 )}
             </TouchableOpacity>

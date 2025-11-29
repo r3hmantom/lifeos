@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ApiService, User } from '../services/api';
 import { StorageService } from '../services/storage';
 
@@ -28,19 +28,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const token = await StorageService.getItem<string>(StorageService.KEYS.AUTH_TOKEN);
       const userData = await StorageService.getItem<User>(StorageService.KEYS.USER_DATA);
-      const memoryFlag = await StorageService.getItem<boolean>(StorageService.KEYS.HAS_CREATED_MEMORY);
-      const goalFlag = await StorageService.getItem<boolean>(StorageService.KEYS.HAS_CREATED_GOAL);
-      const scheduleFlag = await StorageService.getItem<boolean>(StorageService.KEYS.SCHEDULE_GENERATED);
 
       if (token && userData) {
         setUser(userData);
+
+        // Sync state with API
+        try {
+          const memories = await ApiService.memories.getAll();
+          setHasCreatedMemory(memories.length > 0);
+
+          const goals = await ApiService.goals.getAll();
+          setHasCreatedGoal(goals.length > 0);
+
+          const today = new Date().toISOString().split('T')[0];
+          const schedule = await ApiService.schedule.getDaily(today);
+          setIsScheduleGenerated(schedule.items && schedule.items.length > 0);
+        } catch (apiError) {
+          console.warn("Failed to sync state with API", apiError);
+        }
       } else {
         setUser(null);
+        setHasCreatedMemory(false);
+        setHasCreatedGoal(false);
+        setIsScheduleGenerated(false);
       }
-
-      setHasCreatedMemory(!!memoryFlag);
-      setHasCreatedGoal(!!goalFlag);
-      setIsScheduleGenerated(!!scheduleFlag);
     } catch (e) {
       console.error('Error checking app state', e);
     } finally {

@@ -1,4 +1,4 @@
-import { StorageService } from '../storage';
+import { StorageService } from "../storage";
 
 // Types based on api.json
 export interface User {
@@ -27,7 +27,7 @@ export interface Goal {
   title: string;
   focus: string;
   deadline: string;
-  priority: 'High' | 'Medium' | 'Low';
+  priority: "High" | "Medium" | "Low";
   isActive: boolean;
 }
 
@@ -37,148 +37,189 @@ export interface ScheduleItem {
   description?: string;
   startTime: string;
   endTime: string;
-  type: 'fixed_commitment' | 'goal_task' | 'routine' | 'other';
+  type: "fixed_commitment" | "goal_task" | "routine" | "other";
   relatedId?: string;
   isCompleted: boolean;
 }
 
-const MOCK_DELAY = 1000;
+export interface ScheduleGenerationRequest {
+  timezone: string;
+  date: string;
+  preferences?: {
+    startOfDay?: string;
+    endOfDay?: string;
+  };
+}
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export interface TimetableSlot {
+  id: string;
+  userId: string;
+  time: string;
+  activity: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserSettings {
+  id: string;
+  userId: string;
+  theme: "light" | "dark" | "system";
+  notificationsEnabled: boolean;
+  timezone: string;
+  updatedAt: string;
+}
+
+const BASE_URL = "http://localhost:8080/api/v1";
+
+async function request<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await StorageService.getItem<string>(
+    StorageService.KEYS.AUTH_TOKEN
+  );
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP error! status: ${response.status}`);
+    }
+
+    const text = await response.text();
+    return text ? JSON.parse(text) : ({} as T);
+  } catch (error) {
+    console.error(`API Request Failed: ${endpoint}`, error);
+    throw error;
+  }
+}
 
 export const ApiService = {
   auth: {
     login: async (email: string, password: string): Promise<AuthResponse> => {
-      await delay(MOCK_DELAY);
-      // Mock login
-      if (email === 'test@example.com' && password === 'password') {
-        const user = {
-          id: '1',
-          email: 'test@example.com',
-          name: 'Test User',
-        };
-        const token = 'mock-jwt-token';
-        await StorageService.setItem(StorageService.KEYS.AUTH_TOKEN, token);
-        await StorageService.setItem(StorageService.KEYS.USER_DATA, user);
-        return { user, token };
-      }
-      throw new Error('Invalid credentials');
+      const response = await request<AuthResponse>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      await StorageService.setItem(
+        StorageService.KEYS.AUTH_TOKEN,
+        response.token
+      );
+      await StorageService.setItem(
+        StorageService.KEYS.USER_DATA,
+        response.user
+      );
+      return response;
     },
-    register: async (name: string, email: string, password: string): Promise<AuthResponse> => {
-      await delay(MOCK_DELAY);
-      const user = {
-        id: Date.now().toString(),
-        email,
-        name,
-      };
-      const token = 'mock-jwt-token';
-      await StorageService.setItem(StorageService.KEYS.AUTH_TOKEN, token);
-      await StorageService.setItem(StorageService.KEYS.USER_DATA, user);
-      return { user, token };
+    register: async (
+      name: string,
+      email: string,
+      password: string
+    ): Promise<AuthResponse> => {
+      const response = await request<AuthResponse>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password }),
+      });
+      await StorageService.setItem(
+        StorageService.KEYS.AUTH_TOKEN,
+        response.token
+      );
+      await StorageService.setItem(
+        StorageService.KEYS.USER_DATA,
+        response.user
+      );
+      return response;
     },
     logout: async () => {
       await StorageService.clearAll();
-    }
+    },
   },
 
   memories: {
-    getAll: async (): Promise<Memory[]> => {
-      await delay(MOCK_DELAY);
-      const stored = await StorageService.getItem<Memory[]>('MOCK_MEMORIES');
-      return stored || [];
-    },
-    create: async (memory: Omit<Memory, 'id' | 'isActive'>): Promise<Memory> => {
-      await delay(MOCK_DELAY);
-      const newMemory: Memory = {
-        ...memory,
-        id: Date.now().toString(),
-        isActive: true,
-      };
-      const current = await ApiService.memories.getAll();
-      await StorageService.setItem('MOCK_MEMORIES', [newMemory, ...current]);
-      await StorageService.setItem(StorageService.KEYS.HAS_CREATED_MEMORY, true);
-      return newMemory;
-    }
+    getAll: () =>
+      request<{ data: Memory[] }>("/memories").then((res) => res.data || []),
+    create: (memory: Omit<Memory, "id" | "isActive">) =>
+      request<Memory>("/memories", {
+        method: "POST",
+        body: JSON.stringify(memory),
+      }),
+    update: (id: string, memory: Partial<Memory>) =>
+      request<Memory>(`/memories/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(memory),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/memories/${id}`, { method: "DELETE" }),
   },
 
   goals: {
-    getAll: async (): Promise<Goal[]> => {
-      await delay(MOCK_DELAY);
-      const stored = await StorageService.getItem<Goal[]>('MOCK_GOALS');
-      return stored || [];
-    },
-    create: async (goal: Omit<Goal, 'id' | 'isActive'>): Promise<Goal> => {
-      await delay(MOCK_DELAY);
-      const newGoal: Goal = {
-        ...goal,
-        id: Date.now().toString(),
-        isActive: true,
-      };
-      const current = await ApiService.goals.getAll();
-      await StorageService.setItem('MOCK_GOALS', [newGoal, ...current]);
-      await StorageService.setItem(StorageService.KEYS.HAS_CREATED_GOAL, true);
-      return newGoal;
-    }
+    getAll: () =>
+      request<{ data: Goal[] }>("/goals").then((res) => res.data || []),
+    create: (goal: Omit<Goal, "id" | "isActive">) =>
+      request<Goal>("/goals", { method: "POST", body: JSON.stringify(goal) }),
+    update: (id: string, goal: Partial<Goal>) =>
+      request<Goal>(`/goals/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(goal),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/goals/${id}`, { method: "DELETE" }),
   },
 
   schedule: {
-    getDaily: async (date: string): Promise<{ date: string, items: ScheduleItem[] }> => {
-      await delay(MOCK_DELAY);
-      const stored = await StorageService.getItem<ScheduleItem[]>('MOCK_SCHEDULE');
-      return {
-        date,
-        items: stored || []
-      };
-    },
-    generate: async (): Promise<{ message: string, schedule: { date: string, items: ScheduleItem[] } }> => {
-      await delay(MOCK_DELAY * 2); // AI takes longer
-      
-      // Generate mock schedule based on existing memories and goals
-      const memories = await ApiService.memories.getAll();
-      const goals = await ApiService.goals.getAll();
-      
-      const scheduleItems: ScheduleItem[] = [];
-      const today = new Date().toISOString().split('T')[0];
+    getDaily: (date: string) =>
+      request<{ date: string; items: ScheduleItem[] }>(
+        `/schedule?date=${date}`
+      ),
+    generate: (data: ScheduleGenerationRequest) =>
+      request<{
+        message: string;
+        schedule: { date: string; items: ScheduleItem[] };
+      }>("/schedule/generate", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
 
-      // Convert memories to schedule items
-      memories.forEach((m, i) => {
-        scheduleItems.push({
-          id: `sch_mem_${i}`,
-          title: m.title,
-          description: m.description,
-          startTime: `${today}T09:00:00`, // Mock time
-          endTime: `${today}T10:00:00`,
-          type: 'fixed_commitment',
-          relatedId: m.id,
-          isCompleted: false
-        });
-      });
+  settings: {
+    get: () => request<UserSettings>("/settings"),
+    update: (settings: Partial<UserSettings>) =>
+      request<UserSettings>("/settings", {
+        method: "PATCH",
+        body: JSON.stringify(settings),
+      }),
+  },
 
-      // Convert goals to schedule items
-      goals.forEach((g, i) => {
-         scheduleItems.push({
-          id: `sch_goal_${i}`,
-          title: `Work on: ${g.title}`,
-          description: g.focus,
-          startTime: `${today}T14:00:00`, // Mock time
-          endTime: `${today}T15:00:00`,
-          type: 'goal_task',
-          relatedId: g.id,
-          isCompleted: false
-        });
-      });
-
-      await StorageService.setItem('MOCK_SCHEDULE', scheduleItems);
-      await StorageService.setItem(StorageService.KEYS.SCHEDULE_GENERATED, true);
-
-      return {
-        message: "Schedule generated successfully",
-        schedule: {
-          date: today,
-          items: scheduleItems
-        }
-      };
-    }
-  }
+  timetable: {
+    getAll: () =>
+      request<{ data: TimetableSlot[] }>("/timetable").then(
+        (res) => res.data || []
+      ),
+    create: (slot: { time: string; activity: string; isActive: boolean }) =>
+      request<TimetableSlot>("/timetable", {
+        method: "POST",
+        body: JSON.stringify(slot),
+      }),
+    update: (
+      id: string,
+      slot: Partial<{ time: string; activity: string; isActive: boolean }>
+    ) =>
+      request<TimetableSlot>(`/timetable/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(slot),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/timetable/${id}`, { method: "DELETE" }),
+  },
 };
-

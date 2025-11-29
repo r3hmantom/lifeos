@@ -1,6 +1,9 @@
+import { ApiService, TimetableSlot, UserSettings } from '@/src/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActionSheetIOS,
+    ActivityIndicator,
     Alert,
     Keyboard,
     LayoutAnimation,
@@ -13,7 +16,7 @@ import {
     TextInput,
     TouchableOpacity,
     UIManager,
-    View,
+    View
 } from 'react-native';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
@@ -26,24 +29,10 @@ if (
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-type TimeSlot = {
-    id: string;
-    time: string;
-    activity: string;
-    isActive: boolean;
-};
-
-const DEFAULT_TIMETABLE: TimeSlot[] = [
-    { id: '1', time: '07:00 AM', activity: 'Morning Routine', isActive: true },
-    { id: '2', time: '09:00 AM', activity: 'Deep Work', isActive: true },
-    { id: '3', time: '12:00 PM', activity: 'Lunch Break', isActive: true },
-    { id: '4', time: '01:00 PM', activity: 'Meetings & Calls', isActive: true },
-    { id: '5', time: '05:00 PM', activity: 'Exercise', isActive: true },
-    { id: '6', time: '07:00 PM', activity: 'Dinner & Relax', isActive: true },
-];
-
 export default function SettingsScreen() {
-    const [timetable, setTimetable] = useState<TimeSlot[]>(DEFAULT_TIMETABLE);
+    const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
+    const [settings, setSettings] = useState<UserSettings | null>(null);
+    const [loading, setLoading] = useState(true);
 
     // Form State
     const [isFormVisible, setIsFormVisible] = useState(false);
@@ -51,14 +40,47 @@ export default function SettingsScreen() {
     const [timeInput, setTimeInput] = useState('');
     const [activityInput, setActivityInput] = useState('');
 
-    const toggleSlot = (id: string) => {
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [timetableData, settingsData] = await Promise.all([
+                ApiService.timetable.getAll(),
+                ApiService.settings.get()
+            ]);
+            setTimetable(timetableData);
+            setSettings(settingsData);
+        } catch (e) {
+            console.error(e);
+            Alert.alert("Error", "Failed to load settings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const toggleSlot = async (id: string, currentStatus: boolean) => {
         hapticsSelection();
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        // Optimistic update
         setTimetable(current =>
             current.map(slot =>
                 slot.id === id ? { ...slot, isActive: !slot.isActive } : slot
             )
         );
+
+        try {
+            await ApiService.timetable.update(id, { isActive: !currentStatus });
+        } catch (e) {
+            // Revert on error
+            setTimetable(current =>
+                current.map(slot =>
+                    slot.id === id ? { ...slot, isActive: currentStatus } : slot
+                )
+            );
+            Alert.alert("Error", "Failed to update status");
+        }
     };
 
     const handleAddNew = () => {
@@ -70,7 +92,7 @@ export default function SettingsScreen() {
         setIsFormVisible(true);
     };
 
-    const handleEdit = (slot: TimeSlot) => {
+    const handleEdit = (slot: TimetableSlot) => {
         hapticsMedium();
         setEditingId(slot.id);
         setTimeInput(slot.time);
@@ -79,41 +101,49 @@ export default function SettingsScreen() {
         setIsFormVisible(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!timeInput.trim() || !activityInput.trim()) {
             Alert.alert('Missing Information', 'Please enter both time and activity.');
             return;
         }
 
         hapticsSuccess();
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-        if (editingId) {
-            // Update existing
-            setTimetable(current =>
-                current.map(slot =>
-                    slot.id === editingId
-                        ? { ...slot, time: timeInput.trim(), activity: activityInput.trim() }
-                        : slot
-                )
-            );
-        } else {
-            // Create new
-            const newSlot: TimeSlot = {
-                id: Date.now().toString(),
-                time: timeInput.trim(),
-                activity: activityInput.trim(),
-                isActive: true,
-            };
-            setTimetable([...timetable, newSlot]);
+        try {
+            if (editingId) {
+                // Update existing
+                const updatedSlot = await ApiService.timetable.update(editingId, {
+                    time: timeInput.trim(),
+                    activity: activityInput.trim()
+                });
+
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setTimetable(current =>
+                    current.map(slot =>
+                        slot.id === editingId ? updatedSlot : slot
+                    )
+                );
+            } else {
+                // Create new
+                const newSlot = await ApiService.timetable.create({
+                    time: timeInput.trim(),
+                    activity: activityInput.trim(),
+                    isActive: true,
+                });
+
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setTimetable([...timetable, newSlot]);
+            }
+
+            // Reset form
+            setIsFormVisible(false);
+            setEditingId(null);
+            setTimeInput('');
+            setActivityInput('');
+            Keyboard.dismiss();
+        } catch (e) {
+            Alert.alert("Error", "Failed to save slot");
         }
-
-        // Reset form
-        setIsFormVisible(false);
-        setEditingId(null);
-        setTimeInput('');
-        setActivityInput('');
-        Keyboard.dismiss();
     };
 
     const handleCancel = () => {
@@ -132,14 +162,77 @@ export default function SettingsScreen() {
                 {
                     text: "Delete",
                     style: "destructive",
-                    onPress: () => {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        setTimetable(current => current.filter(slot => slot.id !== id));
-                        if (editingId === id) handleCancel();
+                    onPress: async () => {
+                        try {
+                            await ApiService.timetable.delete(id);
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setTimetable(current => current.filter(slot => slot.id !== id));
+                            if (editingId === id) handleCancel();
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to delete slot");
+                        }
                     }
                 }
             ]
         );
+    };
+
+    const toggleNotifications = async (value: boolean) => {
+        if (!settings) return;
+        hapticsSelection();
+        const oldSettings = { ...settings };
+        setSettings({ ...settings, notificationsEnabled: value });
+
+        try {
+            await ApiService.settings.update({ notificationsEnabled: value });
+        } catch (e) {
+            setSettings(oldSettings);
+            Alert.alert("Error", "Failed to update notifications");
+        }
+    };
+
+    const changeTheme = () => {
+        const options = ['Light', 'Dark', 'System', 'Cancel'];
+        const cancelButtonIndex = 3;
+
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options,
+                    cancelButtonIndex,
+                },
+                (buttonIndex) => {
+                    if (buttonIndex !== cancelButtonIndex) {
+                        handleThemeChange(options[buttonIndex].toLowerCase() as any);
+                    }
+                }
+            );
+        } else {
+            Alert.alert(
+                "Select Theme",
+                "Choose your preferred app theme",
+                [
+                    { text: "Light", onPress: () => handleThemeChange('light') },
+                    { text: "Dark", onPress: () => handleThemeChange('dark') },
+                    { text: "System", onPress: () => handleThemeChange('system') },
+                    { text: "Cancel", style: "cancel" }
+                ]
+            );
+        }
+    };
+
+    const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
+        if (!settings) return;
+        hapticsSelection();
+        const oldSettings = { ...settings };
+        setSettings({ ...settings, theme });
+
+        try {
+            await ApiService.settings.update({ theme });
+        } catch (e) {
+            setSettings(oldSettings);
+            Alert.alert("Error", "Failed to update theme");
+        }
     };
 
     return (
@@ -189,46 +282,54 @@ export default function SettingsScreen() {
                     )}
 
                     <View style={styles.card}>
-                        {timetable.map((slot, index) => (
-                            <View key={slot.id} style={[
-                                styles.row,
-                                index !== timetable.length - 1 && styles.divider
-                            ]}>
-                                <TouchableOpacity
-                                    style={styles.rowContent}
-                                    onPress={() => handleEdit(slot)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.textContainer}>
-                                        <Text style={[styles.timeText, !slot.isActive && styles.inactiveText]}>
-                                            {slot.time}
-                                        </Text>
-                                        <Text style={[styles.activityText, !slot.isActive && styles.inactiveText]}>
-                                            {slot.activity}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.editHint}>
-                                        <Ionicons name="pencil" size={14} color={Colors.gray[400]} />
-                                        <Text style={styles.editHintText}>Edit</Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                <View style={styles.actions}>
-                                    <Switch
-                                        value={slot.isActive}
-                                        onValueChange={() => toggleSlot(slot.id)}
-                                        trackColor={{ false: Colors.gray[200], true: Colors.primary }}
-                                        thumbColor={Colors.white}
-                                    />
+                        {loading ? (
+                            <ActivityIndicator size="small" color={Colors.primary} style={{ padding: 20 }} />
+                        ) : timetable.length === 0 ? (
+                            <Text style={{ padding: 20, textAlign: 'center', color: Colors.gray[500] }}>
+                                No slots configured. Add one below.
+                            </Text>
+                        ) : (
+                            timetable.map((slot, index) => (
+                                <View key={slot.id} style={[
+                                    styles.row,
+                                    index !== timetable.length - 1 && styles.divider
+                                ]}>
                                     <TouchableOpacity
-                                        style={styles.deleteButton}
-                                        onPress={() => handleDelete(slot.id)}
+                                        style={styles.rowContent}
+                                        onPress={() => handleEdit(slot)}
+                                        activeOpacity={0.7}
                                     >
-                                        <Ionicons name="trash-outline" size={20} color={Colors.gray[400]} />
+                                        <View style={styles.textContainer}>
+                                            <Text style={[styles.timeText, !slot.isActive && styles.inactiveText]}>
+                                                {slot.time}
+                                            </Text>
+                                            <Text style={[styles.activityText, !slot.isActive && styles.inactiveText]}>
+                                                {slot.activity}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.editHint}>
+                                            <Ionicons name="pencil" size={14} color={Colors.gray[400]} />
+                                            <Text style={styles.editHintText}>Edit</Text>
+                                        </View>
                                     </TouchableOpacity>
+
+                                    <View style={styles.actions}>
+                                        <Switch
+                                            value={slot.isActive}
+                                            onValueChange={() => toggleSlot(slot.id, slot.isActive)}
+                                            trackColor={{ false: Colors.gray[200], true: Colors.primary }}
+                                            thumbColor={Colors.white}
+                                        />
+                                        <TouchableOpacity
+                                            style={styles.deleteButton}
+                                            onPress={() => handleDelete(slot.id)}
+                                        >
+                                            <Ionicons name="trash-outline" size={20} color={Colors.gray[400]} />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
-                        ))}
+                            ))
+                        )}
                     </View>
                 </View>
 
@@ -242,15 +343,23 @@ export default function SettingsScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>App Preferences</Text>
                     <View style={styles.card}>
-                        <TouchableOpacity style={styles.row}>
+                        <View style={styles.row}>
                             <Text style={styles.settingLabel}>Notifications</Text>
-                            <Ionicons name="chevron-forward" size={20} color={Colors.gray[400]} />
-                        </TouchableOpacity>
+                            <Switch
+                                value={settings?.notificationsEnabled ?? false}
+                                onValueChange={toggleNotifications}
+                                trackColor={{ false: Colors.gray[200], true: Colors.primary }}
+                                thumbColor={Colors.white}
+                                disabled={!settings}
+                            />
+                        </View>
                         <View style={styles.divider} />
-                        <TouchableOpacity style={styles.row}>
+                        <TouchableOpacity style={styles.row} onPress={changeTheme} disabled={!settings}>
                             <Text style={styles.settingLabel}>Theme</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={styles.valueText}>Light</Text>
+                                <Text style={styles.valueText}>
+                                    {settings?.theme ? settings.theme.charAt(0).toUpperCase() + settings.theme.slice(1) : 'Loading...'}
+                                </Text>
                                 <Ionicons name="chevron-forward" size={20} color={Colors.gray[400]} />
                             </View>
                         </TouchableOpacity>
