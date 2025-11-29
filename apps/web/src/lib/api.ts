@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 
 // Types based on apidocs.json
 
@@ -28,7 +28,7 @@ export interface Goal {
   title: string;
   focus: string;
   deadline: string;
-  priority: 'High' | 'Medium' | 'Low';
+  priority: "High" | "Medium" | "Low";
   isActive: boolean;
 }
 
@@ -55,7 +55,7 @@ export interface ScheduleGenerationRequest {
 export interface UserSettings {
   id: string;
   userId: string;
-  theme: 'light' | 'dark' | 'system';
+  theme: "light" | "dark" | "system";
   notificationsEnabled: boolean;
   timezone: string;
   updatedAt: string;
@@ -73,19 +73,19 @@ export interface TimetableSlot {
 
 // API Client
 
-const API_URL = 'http://localhost:8080/api/v1';
+const API_URL = "http://localhost:8080/api/v1";
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add a request interceptor to include the token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -95,34 +95,46 @@ api.interceptors.request.use(
 );
 
 export const authApi = {
-  register: (data: any) => api.post<AuthResponse>('/auth/register', data),
-  login: (data: any) => api.post<AuthResponse>('/auth/login', data),
+  register: (data: any) => api.post<AuthResponse>("/auth/register", data),
+  login: (data: any) => api.post<AuthResponse>("/auth/login", data),
 };
 
 export const goalsApi = {
-  getAll: () => api.get<{ data: Goal[] }>('/goals'),
-  create: (data: Omit<Goal, 'id' | 'isActive'>) => api.post<Goal>('/goals', data),
+  getAll: () => api.get<{ data: Goal[] }>("/goals"),
+  create: (data: Omit<Goal, "id" | "isActive">) =>
+    api.post<Goal>("/goals", data),
 };
 
 export const memoriesApi = {
-  getAll: () => api.get<{ data: Memory[] }>('/memories'),
-  create: (data: Omit<Memory, 'id' | 'isActive'>) => api.post<Memory>('/memories', data),
+  getAll: () => api.get<{ data: Memory[] }>("/memories"),
+  create: (data: Omit<Memory, "id" | "isActive">) =>
+    api.post<Memory>("/memories", data),
 };
 
 export const scheduleApi = {
-  get: (date: string) => api.get<{ date: string; items: ScheduleItem[] }>('/schedule', { params: { date } }),
-  generate: (data: ScheduleGenerationRequest) => api.post<{ message: string; schedule: { date: string; items: ScheduleItem[] } }>('/schedule/generate', data),
+  get: (date: string) =>
+    api.get<{ date: string; items: ScheduleItem[] }>("/schedule", {
+      params: { date },
+    }),
+  generate: (data: ScheduleGenerationRequest) =>
+    api.post<{
+      message: string;
+      schedule: { date: string; items: ScheduleItem[] };
+    }>("/schedule/generate", data),
 };
 
 export const settingsApi = {
-  get: () => api.get<UserSettings>('/settings'),
-  update: (data: Partial<UserSettings>) => api.patch<UserSettings>('/settings', data),
+  get: () => api.get<UserSettings>("/settings"),
+  update: (data: Partial<UserSettings>) =>
+    api.patch<UserSettings>("/settings", data),
 };
 
 export const timetableApi = {
-  getAll: () => api.get<{ data: TimetableSlot[] }>('/timetable'),
-  create: (data: Pick<TimetableSlot, 'time' | 'activity' | 'isActive'>) => api.post<TimetableSlot>('/timetable', data),
-  update: (id: string, data: Partial<TimetableSlot>) => api.patch<TimetableSlot>(`/timetable/${id}`, data),
+  getAll: () => api.get<{ data: TimetableSlot[] }>("/timetable"),
+  create: (data: Pick<TimetableSlot, "time" | "activity" | "isActive">) =>
+    api.post<TimetableSlot>("/timetable", data),
+  update: (id: string, data: Partial<TimetableSlot>) =>
+    api.patch<TimetableSlot>(`/timetable/${id}`, data),
   delete: (id: string) => api.delete(`/timetable/${id}`),
 };
 
