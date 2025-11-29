@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, RefreshCw, Plus, Pencil, Trash2 } from "lucide-react"
+import { format, isWithinInterval } from "date-fns"
+import { Calendar as CalendarIcon, Loader2, RefreshCw, Plus, Pencil, Trash2, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -53,6 +53,12 @@ export default function Schedule() {
     const [isGenerating, setIsGenerating] = useState(false)
     const [isItemDialogOpen, setIsItemDialogOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null)
+    const [currentTime, setCurrentTime] = useState(new Date())
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000) // Update every minute
+        return () => clearInterval(timer)
+    }, [])
 
     const form = useForm<z.infer<typeof scheduleFormSchema>>({
         resolver: zodResolver(scheduleFormSchema),
@@ -186,8 +192,95 @@ export default function Schedule() {
         setIsItemDialogOpen(true)
     }
 
+    const getColorForType = (type: string) => {
+        // Hash the type string to get a consistent index
+        let hash = 0;
+        for (let i = 0; i < type.length; i++) {
+            hash = type.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        // Palette of light, pleasant pastel colors
+        const colors = [
+            "bg-red-100 border-red-200 hover:bg-red-200/70",
+            "bg-orange-100 border-orange-200 hover:bg-orange-200/70",
+            "bg-amber-100 border-amber-200 hover:bg-amber-200/70",
+            "bg-yellow-100 border-yellow-200 hover:bg-yellow-200/70",
+            "bg-lime-100 border-lime-200 hover:bg-lime-200/70",
+            "bg-green-100 border-green-200 hover:bg-green-200/70",
+            "bg-emerald-100 border-emerald-200 hover:bg-emerald-200/70",
+            "bg-teal-100 border-teal-200 hover:bg-teal-200/70",
+            "bg-cyan-100 border-cyan-200 hover:bg-cyan-200/70",
+            "bg-sky-100 border-sky-200 hover:bg-sky-200/70",
+            "bg-blue-100 border-blue-200 hover:bg-blue-200/70",
+            "bg-indigo-100 border-indigo-200 hover:bg-indigo-200/70",
+            "bg-violet-100 border-violet-200 hover:bg-violet-200/70",
+            "bg-purple-100 border-purple-200 hover:bg-purple-200/70",
+            "bg-fuchsia-100 border-fuchsia-200 hover:bg-fuchsia-200/70",
+            "bg-pink-100 border-pink-200 hover:bg-pink-200/70",
+            "bg-rose-100 border-rose-200 hover:bg-rose-200/70"
+        ];
+
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
+    }
+
+    const getCurrentTask = () => {
+        const now = currentTime;
+        const currentTask = schedule.find(item => 
+            isWithinInterval(now, { start: new Date(item.startTime), end: new Date(item.endTime) })
+        );
+        return currentTask;
+    }
+
+    const currentTask = getCurrentTask();
+
     return (
         <div className="space-y-6 h-full flex flex-col">
+             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-none shadow-sm">
+                <CardContent className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white rounded-full shadow-sm">
+                            <Clock className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-primary">
+                                {format(currentTime, "h:mm a")}
+                            </h2>
+                            <p className="text-muted-foreground">
+                                {format(currentTime, "EEEE, MMMM do")}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex-1 ml-8 border-l pl-8">
+                        <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                            Current Activity
+                        </p>
+                        {currentTask ? (
+                             <div>
+                                <h3 className="text-lg font-semibold text-foreground">
+                                    {currentTask.title}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                     <Badge variant="secondary">
+                                        {format(new Date(currentTask.startTime), "h:mm a")} - {format(new Date(currentTask.endTime), "h:mm a")}
+                                     </Badge>
+                                     <Badge variant="outline">{currentTask.type}</Badge>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <h3 className="text-lg font-semibold text-foreground">
+                                    Free Time
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    You have no scheduled tasks right now. Take a break or work on a goal!
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Schedule</h2>
                 <div className="flex items-center gap-2">
@@ -352,52 +445,93 @@ export default function Schedule() {
                         </div>
                     ) : (
                         <ScrollArea className="h-full">
-                            <div className="space-y-4 p-6">
-                                {schedule.map((item) => (
+                            <div className="relative min-h-[1440px] w-full">
+                                {/* Time slots background */}
+                                {Array.from({ length: 24 }).map((_, i) => (
                                     <div
-                                        key={item.id}
-                                        className="flex items-start gap-4 rounded-lg border p-4 shadow-sm"
+                                        key={i}
+                                        className="absolute left-0 w-full border-t border-border/30 flex"
+                                        style={{ top: `${i * 60}px`, height: '60px' }}
                                     >
-                                        <div className="flex flex-col items-center gap-1 min-w-20">
-                                            <span className="text-sm font-medium">
-                                                {format(new Date(item.startTime), "HH:mm")}
-                                            </span>
-                                            <div className="h-full w-px bg-border" />
-                                            <span className="text-sm text-muted-foreground">
-                                                {format(new Date(item.endTime), "HH:mm")}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-3 pt-1">
-                                            <Checkbox
-                                                checked={item.isCompleted}
-                                                onCheckedChange={() => toggleComplete(item)}
-                                            />
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className={cn("font-semibold", item.isCompleted && "line-through text-muted-foreground")}>
-                                                        {item.title}
-                                                    </h4>
-                                                    <Badge variant={item.isCompleted ? "secondary" : "outline"}>
-                                                        {item.type}
-                                                    </Badge>
+                                        <span className="w-16 text-xs text-muted-foreground text-right pr-2 -mt-2 bg-background/50">
+                                            {format(new Date().setHours(i, 0), "h:00 a")}
+                                        </span>
+                                        <div className="flex-1 border-l border-border/30" />
+                                    </div>
+                                ))}
+
+                                {schedule.map((item) => {
+                                    // Calculate height and position based on time
+                                    const start = new Date(item.startTime);
+                                    const end = new Date(item.endTime);
+                                    const startHour = start.getHours() + start.getMinutes() / 60;
+                                    const endHour = end.getHours() + end.getMinutes() / 60;
+                                    const duration = endHour - startHour;
+                                    
+                                    // Assuming day starts at 00:00 and ends at 24:00 for simplicity, 
+                                    // or better yet, dynamic range based on earliest/latest item + buffer
+                                    // Let's use fixed height pixels per hour for a vertical scrollable timeline
+                                    const pixelsPerHour = 60;
+                                    const topOffset = startHour * pixelsPerHour;
+                                    const height = Math.max(duration * pixelsPerHour, 40); // Minimum height
+                                    
+                                    const colorClass = item.isCompleted 
+                                        ? "bg-muted/50 border-border hover:bg-muted/70" 
+                                        : getColorForType(item.type);
+
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            className={cn(
+                                                "absolute left-20 right-4 rounded-lg border p-2 shadow-sm transition-all overflow-hidden flex flex-col",
+                                                colorClass
+                                            )}
+                                            style={{
+                                                top: `${topOffset}px`,
+                                                height: `${height}px`,
+                                            }}
+                                        >
+                                            <div className="flex items-start justify-between gap-2 h-full">
+                                                <div className="flex items-start gap-2 overflow-hidden">
+                                                    <Checkbox
+                                                        checked={item.isCompleted}
+                                                        onCheckedChange={() => toggleComplete(item)}
+                                                        className="mt-1"
+                                                    />
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-xs font-medium text-muted-foreground/80 whitespace-nowrap">
+                                                                {format(start, "h:mm a")} - {format(end, "h:mm a")}
+                                                            </span>
+                                                            <Badge 
+                                                                variant="secondary" 
+                                                                className="text-[10px] px-1 py-0 h-5 bg-background/50 hover:bg-background/80 border-black/5"
+                                                            >
+                                                                {item.type}
+                                                            </Badge>
+                                                        </div>
+                                                        <h4 className={cn("font-semibold text-sm truncate leading-tight", item.isCompleted && "line-through text-muted-foreground")}>
+                                                            {item.title}
+                                                        </h4>
+                                                        {duration > 0.7 && (
+                                                            <p className="text-xs text-muted-foreground/80 line-clamp-2 mt-1">
+                                                                {item.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(item)}>
-                                                        <Pencil className="h-4 w-4" />
+                                                <div className="flex items-center gap-0.5 shrink-0">
+                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditDialog(item)}>
+                                                        <Pencil className="h-3 w-3" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)}>
-                                                        <Trash2 className="h-4 w-4" />
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
+                                                        <Trash2 className="h-3 w-3" />
                                                     </Button>
                                                 </div>
                                             </div>
-                                            <p className="text-sm text-muted-foreground">
-                                                {item.description}
-                                            </p>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </ScrollArea>
                     )}

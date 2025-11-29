@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { format } from "date-fns"
-import { Plus, Calendar as CalendarIcon } from "lucide-react"
+import { Plus, Calendar as CalendarIcon, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { goalsApi } from "@/lib/api"
 import type { Goal } from "@/lib/api"
@@ -111,6 +111,16 @@ export default function Goals() {
             toast.success("Goal status updated")
         } catch (error) {
             toast.error("Failed to update goal status")
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        try {
+            await goalsApi.delete(id)
+            setGoals(goals.filter(g => g.id !== id))
+            toast.success("Goal deleted successfully")
+        } catch (error) {
+            toast.error("Failed to delete goal")
         }
     }
 
@@ -254,9 +264,19 @@ export default function Goals() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{goal.title}</div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Deadline: {format(new Date(goal.deadline), "PPP")}
-                            </p>
+                            <div className="flex items-center justify-between mt-1">
+                                <p className="text-xs text-muted-foreground">
+                                    Deadline: {format(new Date(goal.deadline), "PPP")}
+                                </p>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive/90"
+                                    onClick={() => handleDelete(goal.id)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 ))}

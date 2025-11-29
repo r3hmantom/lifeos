@@ -105,6 +105,7 @@ export const goalsApi = {
     api.post<Goal>("/goals", data),
   update: (id: string, data: Partial<Goal>) =>
     api.patch<Goal>(`/goals/${id}`, data),
+  delete: (id: string) => api.delete(`/goals/${id}`),
 };
 
 export const memoriesApi = {
@@ -113,6 +114,7 @@ export const memoriesApi = {
     api.post<Memory>("/memories", data),
   update: (id: string, data: Partial<Memory>) =>
     api.patch<Memory>(`/memories/${id}`, data),
+  delete: (id: string) => api.delete(`/memories/${id}`),
 };
 
 export const scheduleApi = {

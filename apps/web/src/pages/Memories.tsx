@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { format } from "date-fns"
-import { Plus, Calendar as CalendarIcon, Tag } from "lucide-react"
+import { Plus, Calendar as CalendarIcon, Tag, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { memoriesApi } from "@/lib/api"
 import type { Memory } from "@/lib/api"
@@ -97,6 +97,16 @@ export default function Memories() {
             toast.success("Memory status updated")
         } catch (error) {
             toast.error("Failed to update memory status")
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        try {
+            await memoriesApi.delete(id)
+            setMemories(memories.filter(m => m.id !== id))
+            toast.success("Memory deleted successfully")
+        } catch (error) {
+            toast.error("Failed to delete memory")
         }
     }
 
@@ -228,13 +238,23 @@ export default function Memories() {
                             <p className="text-sm text-muted-foreground">
                                 {memory.description}
                             </p>
-                            <div className="flex flex-wrap gap-2">
-                                {memory.tags.map((tag) => (
-                                    <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                                        <Tag className="h-3 w-3" />
-                                        {tag}
-                                    </Badge>
-                                ))}
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    {memory.tags.map((tag) => (
+                                        <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                                            <Tag className="h-3 w-3" />
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive/90"
+                                    onClick={() => handleDelete(memory.id)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
