@@ -22,7 +22,6 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
-import { TimetableManager } from "@/components/TimetableManager"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -52,7 +51,6 @@ export default function Schedule() {
     const [schedule, setSchedule] = useState<ScheduleItem[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
-    const [isTimetableOpen, setIsTimetableOpen] = useState(false)
     const [isItemDialogOpen, setIsItemDialogOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null)
 
@@ -292,23 +290,6 @@ export default function Schedule() {
                                     </DialogFooter>
                                 </form>
                             </Form>
-                        </DialogContent>
-                    </Dialog>
-
-                    <Dialog open={isTimetableOpen} onOpenChange={setIsTimetableOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline">
-                                Manage Routine
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>Manage Routine</DialogTitle>
-                                <DialogDescription>
-                                    Set up your daily routine templates. These slots help generate your daily schedule.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <TimetableManager />
                         </DialogContent>
                     </Dialog>
 

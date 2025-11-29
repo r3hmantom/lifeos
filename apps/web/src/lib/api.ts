@@ -138,13 +138,4 @@ export const settingsApi = {
     api.patch<UserSettings>("/settings", data),
 };
 
-export const timetableApi = {
-  getAll: () => api.get<{ data: TimetableSlot[] }>("/timetable"),
-  create: (data: Pick<TimetableSlot, "time" | "activity" | "isActive">) =>
-    api.post<TimetableSlot>("/timetable", data),
-  update: (id: string, data: Partial<TimetableSlot>) =>
-    api.patch<TimetableSlot>(`/timetable/${id}`, data),
-  delete: (id: string) => api.delete(`/timetable/${id}`),
-};
-
 export default api;
