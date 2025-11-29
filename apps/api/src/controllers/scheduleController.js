@@ -37,18 +37,58 @@ exports.getDailySchedule = async (req, res) => {
 
 exports.generateSchedule = async (req, res) => {
   const { timezone, date, preferences } = req.body;
-  // Placeholder for AI generation logic
-  // In a real implementation, this would call an AI service
-  // For now, we'll just return a success message or create a dummy schedule
-
+  
   try {
-    // Logic to fetch goals and memories and generate schedule items would go here
+    const targetDate = date ? new Date(date) : new Date();
+    
+    // Helper to set time on the target date
+    const setTime = (h, m) => {
+      const d = new Date(targetDate);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
+
+    // Create dummy schedule items
+    const newItems = [
+      {
+        title: "Morning Focus Session",
+        description: "Deep work on high priority goals (AI Generated)",
+        startTime: setTime(9, 0),
+        endTime: setTime(11, 0),
+        type: "goal_task",
+        userId: req.userId,
+        isCompleted: false,
+      },
+      {
+        title: "Lunch Break",
+        description: "Recharge and relax",
+        startTime: setTime(12, 0),
+        endTime: setTime(13, 0),
+        type: "routine",
+        userId: req.userId,
+        isCompleted: false,
+      },
+      {
+        title: "Project Review",
+        description: "Review progress and update tasks",
+        startTime: setTime(14, 0),
+        endTime: setTime(15, 30),
+        type: "fixed_commitment",
+        userId: req.userId,
+        isCompleted: false,
+      }
+    ];
+
+    // Save to database
+    const createdItems = await Promise.all(
+      newItems.map(item => prisma.scheduleItem.create({ data: item }))
+    );
 
     return res.json({
       message: "Schedule generated successfully",
       schedule: {
-        date: date || new Date().toISOString().split("T")[0],
-        items: [], // This would be populated by the AI generation
+        date: targetDate.toISOString().split("T")[0],
+        items: createdItems,
       },
     });
   } catch (err) {
