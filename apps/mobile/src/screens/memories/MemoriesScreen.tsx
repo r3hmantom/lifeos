@@ -151,7 +151,7 @@ export default function MemoriesScreen() {
                 title: title.trim(),
                 description: description.trim(),
                 tags: newTags.length > 0 ? newTags : ['Memory'],
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toISOString(),
             });
 
             hapticsSuccess();

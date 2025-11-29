@@ -27,59 +27,6 @@ export const ONBOARDING_QUESTIONS = {
       type: "text",
     },
   ],
-  timetable: [
-    {
-      id: 6,
-      question: "Do you want to add your class timetable?",
-      type: "boolean",
-    },
-    {
-      id: 7,
-      question: "How many courses do you have this semester?",
-      type: "number",
-      conditional_on: 6,
-    },
-    {
-      id: 8,
-      question: "Enter details for each course",
-      type: "group",
-      fields: [
-        {
-          name: "course_name",
-          type: "text",
-        },
-        {
-          name: "days_of_week",
-          type: "multi_select",
-          options: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        },
-        {
-          name: "start_time",
-          type: "time",
-        },
-        {
-          name: "end_time",
-          type: "time",
-        },
-        {
-          name: "location",
-          type: "text",
-        },
-      ],
-      conditional_on: 6,
-    },
-    {
-      id: 9,
-      question: "Do you have weekly labs?",
-      type: "boolean",
-      conditional_on: 6,
-    },
-    {
-      id: 10,
-      question: "Do you want to include travel time between home and campus?",
-      type: "boolean",
-    },
-  ],
   daily_routine: [
     {
       id: 11,

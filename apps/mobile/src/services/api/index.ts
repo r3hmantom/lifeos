@@ -37,7 +37,7 @@ export interface ScheduleItem {
   description?: string;
   startTime: string;
   endTime: string;
-  type: "fixed_commitment" | "goal_task" | "routine" | "other";
+  type: string;
   relatedId?: string;
   isCompleted: boolean;
 }
@@ -51,16 +51,6 @@ export interface ScheduleGenerationRequest {
   };
 }
 
-export interface TimetableSlot {
-  id: string;
-  userId: string;
-  time: string;
-  activity: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface UserSettings {
   id: string;
   userId: string;
@@ -70,7 +60,7 @@ export interface UserSettings {
   updatedAt: string;
 }
 
-const BASE_URL = "http://localhost:8080/api/v1";
+const BASE_URL = "http://192.168.1.12:8080/api/v1";
 
 async function request<T>(
   endpoint: string,
@@ -182,6 +172,18 @@ export const ApiService = {
       request<{ date: string; items: ScheduleItem[] }>(
         `/schedule?date=${date}`
       ),
+    create: (item: Omit<ScheduleItem, "id">) =>
+      request<ScheduleItem>("/schedule", {
+        method: "POST",
+        body: JSON.stringify(item),
+      }),
+    update: (id: string, item: Partial<ScheduleItem>) =>
+      request<ScheduleItem>(`/schedule/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(item),
+      }),
+    delete: (id: string) =>
+      request<{ message: string }>(`/schedule/${id}`, { method: "DELETE" }),
     generate: (data: ScheduleGenerationRequest) =>
       request<{
         message: string;
@@ -199,27 +201,5 @@ export const ApiService = {
         method: "PATCH",
         body: JSON.stringify(settings),
       }),
-  },
-
-  timetable: {
-    getAll: () =>
-      request<{ data: TimetableSlot[] }>("/timetable").then(
-        (res) => res.data || []
-      ),
-    create: (slot: { time: string; activity: string; isActive: boolean }) =>
-      request<TimetableSlot>("/timetable", {
-        method: "POST",
-        body: JSON.stringify(slot),
-      }),
-    update: (
-      id: string,
-      slot: Partial<{ time: string; activity: string; isActive: boolean }>
-    ) =>
-      request<TimetableSlot>(`/timetable/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(slot),
-      }),
-    delete: (id: string) =>
-      request<{ message: string }>(`/timetable/${id}`, { method: "DELETE" }),
   },
 };

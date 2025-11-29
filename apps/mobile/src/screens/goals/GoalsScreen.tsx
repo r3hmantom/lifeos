@@ -134,11 +134,38 @@ export default function GoalsScreen() {
         hapticsSuccess();
         setSubmitting(true);
 
+        let calculatedDeadline = new Date();
+        switch (deadline) {
+            case '1 Week':
+                calculatedDeadline.setDate(calculatedDeadline.getDate() + 7);
+                break;
+            case '1 Month':
+                calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 1);
+                break;
+            case '3 Months':
+                calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 3);
+                break;
+            case '6 Months':
+                calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 6);
+                break;
+            case '1 Year':
+                calculatedDeadline.setFullYear(calculatedDeadline.getFullYear() + 1);
+                break;
+            default:
+                // Try to parse custom input or default to 1 month
+                const custom = new Date(deadline);
+                if (!isNaN(custom.getTime())) {
+                    calculatedDeadline = custom;
+                } else {
+                    calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 1);
+                }
+        }
+
         try {
             const newGoal = await ApiService.goals.create({
                 title: title.trim(),
                 focus: focus.trim(),
-                deadline: deadline || 'No deadline',
+                deadline: calculatedDeadline.toISOString(),
                 priority,
             });
 
@@ -241,7 +268,7 @@ export default function GoalsScreen() {
                     <View style={styles.cardBody}>
                         <View style={styles.detailRow}>
                             <Ionicons name="calendar-outline" size={16} color={Colors.gray[500]} />
-                            <Text style={styles.detailText}>Deadline: {item.deadline}</Text>
+                            <Text style={styles.detailText}>Deadline: {new Date(item.deadline).toLocaleDateString()}</Text>
                         </View>
                         <View style={styles.detailRow}>
                             <Ionicons name="locate-outline" size={16} color={Colors.gray[500]} />

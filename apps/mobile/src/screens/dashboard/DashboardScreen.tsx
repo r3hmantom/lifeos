@@ -1,5 +1,5 @@
 import { useApp } from '@/src/context/AppContext';
-import { ApiService, ScheduleItem, TimetableSlot } from '@/src/services/api';
+import { ApiService, ScheduleItem } from '@/src/services/api';
 import { hapticsSuccess } from '@/src/utils/haptics';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
@@ -26,7 +26,6 @@ export default function DashboardScreen() {
     const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
-    const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSchedule, setLoadingSchedule] = useState(false);
 
@@ -65,12 +64,8 @@ export default function DashboardScreen() {
         setLoadingSchedule(true);
         try {
             const today = new Date().toISOString().split('T')[0];
-            const [scheduleResult, timetableResult] = await Promise.all([
-                ApiService.schedule.getDaily(today),
-                ApiService.timetable.getAll()
-            ]);
-            setScheduleItems(scheduleResult.items);
-            setTimetableSlots(timetableResult.filter(t => t.isActive));
+            const scheduleResult = await ApiService.schedule.getDaily(today);
+            setScheduleItems(scheduleResult.items || []);
         } catch (e) {
             console.error("Failed to load schedule", e);
         } finally {
@@ -147,12 +142,6 @@ export default function DashboardScreen() {
             return startHour === hour;
         });
 
-        // Filter timetable slots for this hour
-        const slotsInHour = timetableSlots.filter(slot => {
-            const { hour: h } = parseTime(slot.time);
-            return h === hour;
-        });
-
         const isCurrentHour = currentTime.getHours() === hour;
 
         return (
@@ -204,44 +193,6 @@ export default function DashboardScreen() {
                                 </Text>
                             </View>
                         )
-                    })}
-
-                    {/* Render Timetable Slots (Routines) */}
-                    {slotsInHour.map(slot => {
-                        const { minute } = parseTime(slot.time);
-
-                        // Avoid duplicates if already in schedule items
-                        const isDuplicate = itemsInSlot.some(item =>
-                            (item.type === 'routine' || item.title === slot.activity) &&
-                            Math.abs(new Date(item.startTime).getMinutes() - minute) < 10
-                        );
-
-                        if (isDuplicate) return null;
-
-                        return (
-                            <View
-                                key={`slot-${slot.id}`}
-                                style={[
-                                    styles.eventCard,
-                                    {
-                                        backgroundColor: Colors.gray[50] || '#F9FAFB',
-                                        borderColor: Colors.gray[300] || '#D1D5DB',
-                                        borderWidth: 1,
-                                        borderStyle: 'dashed',
-                                        top: (minute / 60) * 60,
-                                        height: 50, // Default height for slots
-                                        zIndex: -1 // Behind real events
-                                    }
-                                ]}
-                            >
-                                <Text style={[styles.eventTitle, { color: Colors.gray[600] || '#4B5563' }]} numberOfLines={1}>
-                                    {slot.activity}
-                                </Text>
-                                <Text style={[styles.eventCategory, { color: Colors.gray[500] || '#6B7280' }]}>
-                                    Routine
-                                </Text>
-                            </View>
-                        );
                     })}
 
                     {/* Current Time Indicator Line */}
