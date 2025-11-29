@@ -95,7 +95,7 @@ export default function Schedule() {
             const formattedDate = format(date, "yyyy-MM-dd")
             const response = await scheduleApi.get(formattedDate)
             // Sort by start time
-            const sorted = (response.data.items || []).sort((a, b) => 
+            const sorted = (response.data.items || []).sort((a, b) =>
                 new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
             )
             setSchedule(sorted)
@@ -368,8 +368,8 @@ export default function Schedule() {
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-3 pt-1">
-                                            <Checkbox 
-                                                checked={item.isCompleted} 
+                                            <Checkbox
+                                                checked={item.isCompleted}
                                                 onCheckedChange={() => toggleComplete(item)}
                                             />
                                         </div>
