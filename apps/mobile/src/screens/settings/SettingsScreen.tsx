@@ -1,5 +1,7 @@
+import { useApp } from '@/src/context/AppContext';
 import { ApiService, UserSettings } from '@/src/services/api';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActionSheetIOS,
@@ -27,6 +29,8 @@ if (
 }
 
 export default function SettingsScreen() {
+    const { logout } = useApp();
+    const router = useRouter();
     const [settings, setSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -105,6 +109,28 @@ export default function SettingsScreen() {
         }
     };
 
+    const handleLogout = () => {
+        Alert.alert(
+            "Log Out",
+            "Are you sure you want to log out?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Log Out",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await logout();
+                            router.replace('/auth');
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to log out");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -115,7 +141,7 @@ export default function SettingsScreen() {
                 {loading && (
                     <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 20 }} />
                 )}
-                
+
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>App Preferences</Text>
                     <View style={styles.card}>
@@ -138,6 +164,16 @@ export default function SettingsScreen() {
                                 </Text>
                                 <Ionicons name="chevron-forward" size={20} color={Colors.gray[400]} />
                             </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Account</Text>
+                    <View style={styles.card}>
+                        <TouchableOpacity style={styles.row} onPress={handleLogout}>
+                            <Text style={[styles.settingLabel, { color: Colors.error }]}>Log Out</Text>
+                            <Ionicons name="log-out-outline" size={20} color={Colors.error} />
                         </TouchableOpacity>
                     </View>
                 </View>
