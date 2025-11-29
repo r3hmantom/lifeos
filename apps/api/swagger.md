@@ -148,6 +148,75 @@ Schedule management endpoints
 | --------------- | ------ |
 | bearerAuth |  |
 
+### [POST] /schedule
+**Create a new schedule item manually**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ScheduleItem](#scheduleitem)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Created schedule item | **application/json**: [ScheduleItem](#scheduleitem)<br> |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+### [PATCH] /schedule/{id}
+**Update a schedule item**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ScheduleItem](#scheduleitem)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Updated schedule item | **application/json**: [ScheduleItem](#scheduleitem)<br> |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+### [DELETE] /schedule/{id}
+**Delete a schedule item**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Item deleted successfully |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
 ### [POST] /schedule/generate
 **Trigger AI to generate a schedule**
 

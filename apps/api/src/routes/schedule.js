@@ -44,6 +44,80 @@ router.get("/", authMiddleware, scheduleController.getDailySchedule);
 
 /**
  * @swagger
+ * /schedule:
+ *   post:
+ *     summary: Create a new schedule item manually
+ *     tags: [Schedule]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ScheduleItem'
+ *     responses:
+ *       200:
+ *         description: Created schedule item
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ScheduleItem'
+ */
+router.post("/", authMiddleware, scheduleController.createScheduleItem);
+
+/**
+ * @swagger
+ * /schedule/{id}:
+ *   patch:
+ *     summary: Update a schedule item
+ *     tags: [Schedule]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ScheduleItem'
+ *     responses:
+ *       200:
+ *         description: Updated schedule item
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ScheduleItem'
+ */
+router.patch("/:id", authMiddleware, scheduleController.updateScheduleItem);
+
+/**
+ * @swagger
+ * /schedule/{id}:
+ *   delete:
+ *     summary: Delete a schedule item
+ *     tags: [Schedule]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Item deleted successfully
+ */
+router.delete("/:id", authMiddleware, scheduleController.deleteScheduleItem);
+
+/**
+ * @swagger
  * /schedule/generate:
  *   post:
  *     summary: Trigger AI to generate a schedule
