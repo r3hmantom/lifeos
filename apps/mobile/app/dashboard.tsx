@@ -7,10 +7,13 @@ import SettingsScreen from "@/src/screens/settings/SettingsScreen";
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createMaterialTopTabNavigator();
 
 export default function DashboardLayout() {
+    const insets = useSafeAreaInsets();
+
     return (
         <Tab.Navigator
             initialRouteName="Dashboard"
@@ -24,8 +27,8 @@ export default function DashboardLayout() {
                     borderTopColor: Colors.gray[100],
                     elevation: 0, // Remove shadow on Android
                     shadowOpacity: 0, // Remove shadow on iOS
-                    height: 65,
-                    paddingBottom: 5,
+                    height: 65 + insets.bottom,
+                    paddingBottom: insets.bottom + 5,
                     marginBottom: 0
                 },
                 tabBarIndicatorStyle: {
