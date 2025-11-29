@@ -103,12 +103,16 @@ export const goalsApi = {
   getAll: () => api.get<{ data: Goal[] }>("/goals"),
   create: (data: Omit<Goal, "id" | "isActive">) =>
     api.post<Goal>("/goals", data),
+  update: (id: string, data: Partial<Goal>) =>
+    api.patch<Goal>(`/goals/${id}`, data),
 };
 
 export const memoriesApi = {
   getAll: () => api.get<{ data: Memory[] }>("/memories"),
   create: (data: Omit<Memory, "id" | "isActive">) =>
     api.post<Memory>("/memories", data),
+  update: (id: string, data: Partial<Memory>) =>
+    api.patch<Memory>(`/memories/${id}`, data),
 };
 
 export const scheduleApi = {
@@ -116,6 +120,11 @@ export const scheduleApi = {
     api.get<{ date: string; items: ScheduleItem[] }>("/schedule", {
       params: { date },
     }),
+  create: (data: Omit<ScheduleItem, "id" | "isCompleted">) =>
+    api.post<ScheduleItem>("/schedule", data),
+  update: (id: string, data: Partial<ScheduleItem>) =>
+    api.patch<ScheduleItem>(`/schedule/${id}`, data),
+  delete: (id: string) => api.delete(`/schedule/${id}`),
   generate: (data: ScheduleGenerationRequest) =>
     api.post<{
       message: string;

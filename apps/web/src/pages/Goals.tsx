@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/popover"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 
 const formSchema = z.object({
@@ -100,6 +101,16 @@ export default function Goals() {
                 return "secondary"
             default:
                 return "outline"
+        }
+    }
+
+    const toggleActive = async (id: string, currentState: boolean) => {
+        try {
+            await goalsApi.update(id, { isActive: !currentState })
+            setGoals(goals.map(g => g.id === id ? { ...g, isActive: !currentState } : g))
+            toast.success("Goal status updated")
+        } catch (error) {
+            toast.error("Failed to update goal status")
         }
     }
 
@@ -231,9 +242,15 @@ export default function Goals() {
                             <CardTitle className="text-sm font-medium">
                                 {goal.focus}
                             </CardTitle>
-                            <Badge variant={getPriorityColor(goal.priority) as any}>
-                                {goal.priority}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    checked={goal.isActive}
+                                    onCheckedChange={() => toggleActive(goal.id, goal.isActive)}
+                                />
+                                <Badge variant={getPriorityColor(goal.priority) as any}>
+                                    {goal.priority}
+                                </Badge>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{goal.title}</div>

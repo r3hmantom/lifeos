@@ -96,7 +96,11 @@
           },
           "priority": {
             "type": "string",
-            "enum": ["High", "Medium", "Low"]
+            "enum": [
+              "High",
+              "Medium",
+              "Low"
+            ]
           },
           "isActive": {
             "type": "boolean"
@@ -171,7 +175,11 @@
           },
           "theme": {
             "type": "string",
-            "enum": ["light", "dark", "system"]
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ]
           },
           "notificationsEnabled": {
             "type": "boolean"
@@ -238,14 +246,20 @@
     "/auth/register": {
       "post": {
         "summary": "Register new user",
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name", "email", "password"],
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
                 "properties": {
                   "name": {
                     "type": "string"
@@ -281,14 +295,19 @@
     "/auth/login": {
       "post": {
         "summary": "Authenticate existing user",
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["email", "password"],
+                "required": [
+                  "email",
+                  "password"
+                ],
                 "properties": {
                   "email": {
                     "type": "string"
@@ -321,7 +340,9 @@
     "/goals": {
       "get": {
         "summary": "Get all user goals",
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -350,7 +371,9 @@
       },
       "post": {
         "summary": "Create a new goal",
-        "tags": ["Goals"],
+        "tags": [
+          "Goals"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -362,7 +385,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["title", "focus", "deadline", "priority"],
+                "required": [
+                  "title",
+                  "focus",
+                  "deadline",
+                  "priority"
+                ],
                 "properties": {
                   "title": {
                     "type": "string"
@@ -376,7 +404,11 @@
                   },
                   "priority": {
                     "type": "string",
-                    "enum": ["High", "Medium", "Low"]
+                    "enum": [
+                      "High",
+                      "Medium",
+                      "Low"
+                    ]
                   }
                 }
               }
@@ -400,7 +432,9 @@
     "/memories": {
       "get": {
         "summary": "Get all user memories",
-        "tags": ["Memories"],
+        "tags": [
+          "Memories"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -429,7 +463,9 @@
       },
       "post": {
         "summary": "Create a new memory/commitment",
-        "tags": ["Memories"],
+        "tags": [
+          "Memories"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -441,7 +477,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["title", "description", "date"],
+                "required": [
+                  "title",
+                  "description",
+                  "date"
+                ],
                 "properties": {
                   "title": {
                     "type": "string"
@@ -481,7 +521,9 @@
     "/schedule": {
       "get": {
         "summary": "Get the generated schedule for a specific date",
-        "tags": ["Schedule"],
+        "tags": [
+          "Schedule"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -521,12 +563,118 @@
             }
           }
         }
+      },
+      "post": {
+        "summary": "Create a new schedule item manually",
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created schedule item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleItem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schedule/{id}": {
+      "patch": {
+        "summary": "Update a schedule item",
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated schedule item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleItem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a schedule item",
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item deleted successfully"
+          }
+        }
       }
     },
     "/schedule/generate": {
       "post": {
         "summary": "Trigger AI to generate a schedule",
-        "tags": ["Schedule"],
+        "tags": [
+          "Schedule"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -578,7 +726,9 @@
     "/settings": {
       "get": {
         "summary": "Get user settings",
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -599,7 +749,9 @@
       },
       "patch": {
         "summary": "Update user settings",
-        "tags": ["Settings"],
+        "tags": [
+          "Settings"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -614,7 +766,11 @@
                 "properties": {
                   "theme": {
                     "type": "string",
-                    "enum": ["light", "dark", "system"]
+                    "enum": [
+                      "light",
+                      "dark",
+                      "system"
+                    ]
                   },
                   "notificationsEnabled": {
                     "type": "boolean"
@@ -644,7 +800,9 @@
     "/timetable": {
       "get": {
         "summary": "Get all timetable slots",
-        "tags": ["Timetable"],
+        "tags": [
+          "Timetable"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -665,7 +823,9 @@
       },
       "post": {
         "summary": "Create a new timetable slot",
-        "tags": ["Timetable"],
+        "tags": [
+          "Timetable"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -677,7 +837,10 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["time", "activity"],
+                "required": [
+                  "time",
+                  "activity"
+                ],
                 "properties": {
                   "time": {
                     "type": "string",
@@ -711,7 +874,9 @@
     "/timetable/{id}": {
       "patch": {
         "summary": "Update a timetable slot",
-        "tags": ["Timetable"],
+        "tags": [
+          "Timetable"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -766,7 +931,9 @@
       },
       "delete": {
         "summary": "Delete a timetable slot",
-        "tags": ["Timetable"],
+        "tags": [
+          "Timetable"
+        ],
         "security": [
           {
             "bearerAuth": []

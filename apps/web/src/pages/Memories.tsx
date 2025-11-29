@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/popover"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 
 const formSchema = z.object({
@@ -86,6 +87,16 @@ export default function Memories() {
             fetchMemories()
         } catch (error) {
             toast.error("Failed to create memory")
+        }
+    }
+
+    const toggleActive = async (id: string, currentState: boolean) => {
+        try {
+            await memoriesApi.update(id, { isActive: !currentState })
+            setMemories(memories.map(m => m.id === id ? { ...m, isActive: !currentState } : m))
+            toast.success("Memory status updated")
+        } catch (error) {
+            toast.error("Failed to update memory status")
         }
     }
 
@@ -201,7 +212,13 @@ export default function Memories() {
                     <Card key={memory.id}>
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between">
-                                <span>{memory.title}</span>
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        checked={memory.isActive}
+                                        onCheckedChange={() => toggleActive(memory.id, memory.isActive)}
+                                    />
+                                    <span>{memory.title}</span>
+                                </div>
                                 <span className="text-xs font-normal text-muted-foreground">
                                     {format(new Date(memory.date), "PPP")}
                                 </span>
