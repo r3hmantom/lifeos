@@ -152,4 +152,24 @@ router.delete("/:id", authMiddleware, scheduleController.deleteScheduleItem);
  */
 router.post("/generate", authMiddleware, scheduleController.generateSchedule);
 
+/**
+ * @swagger
+ * /schedule/batch:
+ *   post:
+ *     summary: Save multiple schedule items at once
+ *     tags: [Schedule]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/BatchScheduleRequest'
+ *     responses:
+ *       200:
+ *         description: Schedule items saved successfully
+ */
+router.post("/batch", authMiddleware, scheduleController.batchCreateScheduleItems);
+
 module.exports = router;

@@ -105,20 +105,27 @@ exports.deleteScheduleItem = async (req, res) => {
 };
 
 exports.generateSchedule = async (req, res) => {
-  const { timezone, date, preferences } = req.body;
+  const { timezone, date, preferences, goalIds, memoryIds, customPrompt } = req.body;
 
   try {
     const targetDate = date ? new Date(date) : new Date();
     const dateString = targetDate.toISOString().split("T")[0];
 
+    // Build where clauses for goals and memories
+    const goalWhere = { userId: req.userId, isActive: true };
+    if (goalIds && goalIds.length > 0) {
+      goalWhere.id = { in: goalIds };
+    }
+
+    const memoryWhere = { userId: req.userId, isActive: true };
+    if (memoryIds && memoryIds.length > 0) {
+      memoryWhere.id = { in: memoryIds };
+    }
+
     // Fetch active goals and memories
     const [activeGoals, activeMemories] = await Promise.all([
-      prisma.goal.findMany({
-        where: { userId: req.userId, isActive: true },
-      }),
-      prisma.memory.findMany({
-        where: { userId: req.userId, isActive: true },
-      }),
+      prisma.goal.findMany({ where: goalWhere }),
+      prisma.memory.findMany({ where: memoryWhere }),
     ]);
 
     // Helper to set time on the target date
@@ -134,7 +141,8 @@ exports.generateSchedule = async (req, res) => {
       dateString,
       activeGoals,
       activeMemories,
-      { timezone, ...preferences }
+      { timezone, ...preferences },
+      customPrompt
     );
 
     // Call AI Service
@@ -185,5 +193,33 @@ exports.generateSchedule = async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Failed to generate schedule" });
+  }
+};
+
+exports.batchCreateScheduleItems = async (req, res) => {
+  const { date, items } = req.body;
+
+  try {
+    const createdItems = await Promise.all(
+      items.map((item) => {
+        return prisma.scheduleItem.create({
+          data: {
+            title: item.title,
+            description: item.description,
+            startTime: new Date(item.startTime),
+            endTime: new Date(item.endTime),
+            type: item.type || "manual",
+            relatedId: item.relatedId,
+            userId: req.userId,
+            isCompleted: item.isCompleted || false,
+          },
+        });
+      })
+    );
+
+    return res.json({ message: "Schedule items saved successfully", count: createdItems.length });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to save schedule items" });
   }
 };

@@ -86,6 +86,89 @@ const options = {
                 endOfDay: { type: "string" },
               },
             },
+            goalIds: {
+              type: "array",
+              items: { type: "string", format: "uuid" },
+            },
+            memoryIds: {
+              type: "array",
+              items: { type: "string", format: "uuid" },
+            },
+            customPrompt: { type: "string" },
+          },
+        },
+        ChatMessage: {
+          type: "object",
+          required: ["role", "content"],
+          properties: {
+            role: {
+              type: "string",
+              enum: ["user", "assistant", "system"],
+            },
+            content: { type: "string" },
+          },
+        },
+        ChatRequest: {
+          type: "object",
+          required: ["messages"],
+          properties: {
+            messages: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ChatMessage" },
+            },
+            context: {
+              type: "object",
+              properties: {
+                date: { type: "string", format: "date" },
+                timezone: { type: "string" },
+                selectedGoalIds: {
+                  type: "array",
+                  items: { type: "string", format: "uuid" },
+                },
+                selectedMemoryIds: {
+                  type: "array",
+                  items: { type: "string", format: "uuid" },
+                },
+              },
+            },
+          },
+        },
+        ChatResponse: {
+          type: "object",
+          properties: {
+            message: { type: "string" },
+            intent: {
+              type: "string",
+              enum: ["chat", "schedule_generated", "schedule_modified", "clarification_needed"],
+            },
+            data: { type: "object" },
+          },
+        },
+        BatchScheduleRequest: {
+          type: "object",
+          required: ["date", "items"],
+          properties: {
+            date: { type: "string", format: "date" },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ScheduleItem" },
+            },
+            metadata: {
+              type: "object",
+              description: "Audit trail data like prompt used, goals selected",
+            },
+          },
+        },
+        InsightMetrics: {
+          type: "object",
+          properties: {
+            productivityScore: { type: "number" },
+            categoryDistribution: {
+              type: "object",
+              additionalProperties: { type: "number" },
+            },
+            completedTasks: { type: "number" },
+            totalTasks: { type: "number" },
           },
         },
         UserSettings: {

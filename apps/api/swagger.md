@@ -8,6 +8,31 @@ API documentation for the LifeOS
 Bearer format: JWT
 
 ---
+## Assistant
+AI Assistant endpoints
+
+### [POST] /assistant/chat
+**Chat with the AI assistant for schedule planning**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatRequest](#chatrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Assistant response | **application/json**: [ChatResponse](#chatresponse)<br> |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+---
 ## Auth
 Authentication endpoints
 
@@ -124,6 +149,32 @@ Goal management endpoints
 | Code | Description |
 | ---- | ----------- |
 | 200 | Goal deleted successfully |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
+---
+## Insights
+Productivity insights endpoints
+
+### [GET] /insights
+**Get productivity insights and metrics**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| startDate | query |  | No | date |
+| endDate | query |  | No | date |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Insights data | **application/json**: [InsightMetrics](#insightmetrics)<br> |
 
 ##### Security
 
@@ -334,6 +385,27 @@ Schedule management endpoints
 | --------------- | ------ |
 | bearerAuth |  |
 
+### [POST] /schedule/batch
+**Save multiple schedule items at once**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BatchScheduleRequest](#batchschedulerequest)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Schedule items saved successfully |
+
+##### Security
+
+| Security Schema | Scopes |
+| --------------- | ------ |
+| bearerAuth |  |
+
 ---
 ## Settings
 User settings management
@@ -435,6 +507,48 @@ User settings management
 | timezone | string |  | No |
 | date | date |  | No |
 | preferences | { **"startOfDay"**: string, **"endOfDay"**: string } |  | No |
+| goalIds | [ string (uuid) ] |  | No |
+| memoryIds | [ string (uuid) ] |  | No |
+| customPrompt | string |  | No |
+
+#### ChatMessage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role | string, <br>**Available values:** "user", "assistant", "system" | *Enum:* `"user"`, `"assistant"`, `"system"` | Yes |
+| content | string |  | Yes |
+
+#### ChatRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| messages | [ [ChatMessage](#chatmessage) ] |  | Yes |
+| context | { **"date"**: date, **"timezone"**: string, **"selectedGoalIds"**: [ string (uuid) ], **"selectedMemoryIds"**: [ string (uuid) ] } |  | No |
+
+#### ChatResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | No |
+| intent | string, <br>**Available values:** "chat", "schedule_generated", "schedule_modified", "clarification_needed" | *Enum:* `"chat"`, `"schedule_generated"`, `"schedule_modified"`, `"clarification_needed"` | No |
+| data | object |  | No |
+
+#### BatchScheduleRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | date |  | Yes |
+| items | [ [ScheduleItem](#scheduleitem) ] |  | Yes |
+| metadata | object | Audit trail data like prompt used, goals selected | No |
+
+#### InsightMetrics
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| productivityScore | number |  | No |
+| categoryDistribution | object |  | No |
+| completedTasks | number |  | No |
+| totalTasks | number |  | No |
 
 #### UserSettings
 

@@ -159,6 +159,146 @@
                 "type": "string"
               }
             }
+          },
+          "goalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "memoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "customPrompt": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "system"
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatRequest": {
+        "type": "object",
+        "required": [
+          "messages"
+        ],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "selectedGoalIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "selectedMemoryIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "schedule_generated",
+              "schedule_modified",
+              "clarification_needed"
+            ]
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "BatchScheduleRequest": {
+        "type": "object",
+        "required": [
+          "date",
+          "items"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleItem"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Audit trail data like prompt used, goals selected"
+          }
+        }
+      },
+      "InsightMetrics": {
+        "type": "object",
+        "properties": {
+          "productivityScore": {
+            "type": "number"
+          },
+          "categoryDistribution": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "completedTasks": {
+            "type": "number"
+          },
+          "totalTasks": {
+            "type": "number"
           }
         }
       },
@@ -201,6 +341,41 @@
     }
   ],
   "paths": {
+    "/assistant/chat": {
+      "post": {
+        "summary": "Chat with the AI assistant for schedule planning",
+        "tags": [
+          "Assistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Assistant response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/register": {
       "post": {
         "summary": "Register new user",
@@ -477,6 +652,49 @@
         "responses": {
           "200": {
             "description": "Goal deleted successfully"
+          }
+        }
+      }
+    },
+    "/insights": {
+      "get": {
+        "summary": "Get productivity insights and metrics",
+        "tags": [
+          "Insights"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Insights data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightMetrics"
+                }
+              }
+            }
           }
         }
       }
@@ -867,6 +1085,34 @@
         }
       }
     },
+    "/schedule/batch": {
+      "post": {
+        "summary": "Save multiple schedule items at once",
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule items saved successfully"
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "summary": "Get user settings",
@@ -944,12 +1190,20 @@
   },
   "tags": [
     {
+      "name": "Assistant",
+      "description": "AI Assistant endpoints"
+    },
+    {
       "name": "Auth",
       "description": "Authentication endpoints"
     },
     {
       "name": "Goals",
       "description": "Goal management endpoints"
+    },
+    {
+      "name": "Insights",
+      "description": "Productivity insights endpoints"
     },
     {
       "name": "Memories",
