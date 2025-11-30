@@ -6,7 +6,6 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
@@ -14,11 +13,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
 
 export default function ChatScreen() {
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
     const [messages, setMessages] = useState<ChatMessage[]>([
         { role: 'assistant', content: "Hi! I'm your LifeOS assistant. I can help you plan your schedule, manage tasks, or answer questions about your goals." }
     ]);
@@ -64,7 +65,7 @@ export default function ChatScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
@@ -106,7 +107,7 @@ export default function ChatScreen() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
             >
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, { paddingBottom: 12 + insets.bottom }]}>
                     <TextInput
                         style={styles.input}
                         placeholder="Type a message..."
@@ -124,7 +125,7 @@ export default function ChatScreen() {
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -141,7 +142,6 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: Colors.gray[100],
-        marginTop: 40,
     },
     backButton: {
         padding: 4,

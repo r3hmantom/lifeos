@@ -254,7 +254,7 @@ export default function DashboardScreen() {
                         </Text>
                     ) : (
                         <View style={styles.timelineContainer}>
-                            {timeSlots.slice(6, 23).map(renderTimeSlot)}
+                            {timeSlots.map(renderTimeSlot)}
                         </View>
                     )}
                 </View>

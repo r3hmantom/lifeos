@@ -59,6 +59,9 @@ export default function DashboardLayout() {
                     fontSize: 10,
                     textTransform: 'none',
                 },
+                tabBarItemStyle: {
+                    padding: 0,
+                },
 
                 swipeEnabled: true,
                 animationEnabled: true,
