@@ -2,17 +2,36 @@ import Colors from "@/src/constants/colors";
 import Fonts from "@/src/constants/fonts";
 import DashboardScreen from "@/src/screens/dashboard/DashboardScreen";
 import GoalsScreen from "@/src/screens/goals/GoalsScreen";
+import InsightsScreen from "@/src/screens/insights/InsightsScreen";
 import MemoriesScreen from "@/src/screens/memories/MemoriesScreen";
 import SettingsScreen from "@/src/screens/settings/SettingsScreen";
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createMaterialTopTabNavigator();
 
 export default function DashboardLayout() {
     const insets = useSafeAreaInsets();
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const showSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => setKeyboardVisible(true)
+        );
+        const hideSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setKeyboardVisible(false)
+        );
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, []);
 
     return (
         <Tab.Navigator
@@ -27,9 +46,10 @@ export default function DashboardLayout() {
                     borderTopColor: Colors.gray[100],
                     elevation: 0, // Remove shadow on Android
                     shadowOpacity: 0, // Remove shadow on iOS
-                    height: 65 + insets.bottom,
-                    paddingBottom: insets.bottom + 5,
-                    marginBottom: 0
+                    height: isKeyboardVisible ? 0 : 65 + insets.bottom,
+                    paddingBottom: isKeyboardVisible ? 0 : insets.bottom + 5,
+                    marginBottom: 0,
+                    display: isKeyboardVisible ? 'none' : 'flex',
                 },
                 tabBarIndicatorStyle: {
                     display: 'none', // Hide the top indicator line typical of material tabs
@@ -61,6 +81,16 @@ export default function DashboardLayout() {
                     tabBarLabel: 'Today',
                     tabBarIcon: ({ color, focused }) => (
                         <Ionicons name={focused ? "grid" : "grid-outline"} size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tab.Screen
+                name="Insights"
+                component={InsightsScreen}
+                options={{
+                    tabBarLabel: 'Insights',
+                    tabBarIcon: ({ color, focused }) => (
+                        <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={24} color={color} />
                     ),
                 }}
             />

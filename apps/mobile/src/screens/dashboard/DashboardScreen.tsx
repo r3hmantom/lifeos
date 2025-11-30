@@ -3,6 +3,7 @@ import { ApiService, ScheduleItem } from '@/src/services/api';
 import { hapticsSuccess } from '@/src/utils/haptics';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -23,6 +24,7 @@ const { width } = Dimensions.get("window");
 
 export default function DashboardScreen() {
     const navigation = useNavigation<any>();
+    const router = useRouter();
     const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
@@ -98,6 +100,10 @@ export default function DashboardScreen() {
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    const handleOpenChat = () => {
+        router.push('/chat' as any);
     };
 
     const formattedTime = useMemo(() => {
@@ -256,22 +262,13 @@ export default function DashboardScreen() {
             </ScrollView>
 
             {/* Generate Schedule FAB */}
-            {hasCreatedMemory && hasCreatedGoal && !isScheduleGenerated && (
-                <TouchableOpacity
-                    style={styles.fab}
-                    onPress={handleGenerateSchedule}
-                    disabled={isGenerating}
-                >
-                    {isGenerating ? (
-                        <ActivityIndicator color="white" />
-                    ) : (
-                        <>
-                            <Ionicons name="sparkles" size={24} color="white" />
-                            <Text style={styles.fabText}>Generate Schedule</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
-            )}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={handleOpenChat}
+            >
+                <Ionicons name="chatbubble-ellipses" size={24} color="white" />
+                <Text style={styles.fabText}>AI Assistant</Text>
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }
@@ -421,7 +418,7 @@ const styles = StyleSheet.create({
     // FAB Styles
     fab: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 30, // Increased from 20 to ensure visibility
         right: 20,
         backgroundColor: Colors.primary,
         flexDirection: 'row',
@@ -435,6 +432,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4.65,
         elevation: 8,
         gap: 8,
+        zIndex: 100, // Ensure it's on top
     },
     fabText: {
         color: 'white',

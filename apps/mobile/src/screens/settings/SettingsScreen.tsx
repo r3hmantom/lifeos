@@ -1,17 +1,13 @@
 import { useApp } from '@/src/context/AppContext';
-import { ApiService, UserSettings } from '@/src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
     Alert,
     Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
     TouchableOpacity,
     UIManager,
@@ -19,7 +15,6 @@ import {
 } from 'react-native';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
-import { hapticsSelection } from '../../utils/haptics';
 
 if (
     Platform.OS === 'android' &&
@@ -31,83 +26,6 @@ if (
 export default function SettingsScreen() {
     const { logout } = useApp();
     const router = useRouter();
-    const [settings, setSettings] = useState<UserSettings | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            const settingsData = await ApiService.settings.get();
-            setSettings(settingsData);
-        } catch (e) {
-            console.error(e);
-            Alert.alert("Error", "Failed to load settings");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const toggleNotifications = async (value: boolean) => {
-        if (!settings) return;
-        hapticsSelection();
-        const oldSettings = { ...settings };
-        setSettings({ ...settings, notificationsEnabled: value });
-
-        try {
-            await ApiService.settings.update({ notificationsEnabled: value });
-        } catch (e) {
-            setSettings(oldSettings);
-            Alert.alert("Error", "Failed to update notifications");
-        }
-    };
-
-    const changeTheme = () => {
-        const options = ['Light', 'Dark', 'System', 'Cancel'];
-        const cancelButtonIndex = 3;
-
-        if (Platform.OS === 'ios') {
-            ActionSheetIOS.showActionSheetWithOptions(
-                {
-                    options,
-                    cancelButtonIndex,
-                },
-                (buttonIndex) => {
-                    if (buttonIndex !== cancelButtonIndex) {
-                        handleThemeChange(options[buttonIndex].toLowerCase() as any);
-                    }
-                }
-            );
-        } else {
-            Alert.alert(
-                "Select Theme",
-                "Choose your preferred app theme",
-                [
-                    { text: "Light", onPress: () => handleThemeChange('light') },
-                    { text: "Dark", onPress: () => handleThemeChange('dark') },
-                    { text: "System", onPress: () => handleThemeChange('system') },
-                    { text: "Cancel", style: "cancel" }
-                ]
-            );
-        }
-    };
-
-    const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
-        if (!settings) return;
-        hapticsSelection();
-        const oldSettings = { ...settings };
-        setSettings({ ...settings, theme });
-
-        try {
-            await ApiService.settings.update({ theme });
-        } catch (e) {
-            setSettings(oldSettings);
-            Alert.alert("Error", "Failed to update theme");
-        }
-    };
 
     const handleLogout = () => {
         Alert.alert(
@@ -138,36 +56,6 @@ export default function SettingsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                {loading && (
-                    <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 20 }} />
-                )}
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>App Preferences</Text>
-                    <View style={styles.card}>
-                        <View style={styles.row}>
-                            <Text style={styles.settingLabel}>Notifications</Text>
-                            <Switch
-                                value={settings?.notificationsEnabled ?? false}
-                                onValueChange={toggleNotifications}
-                                trackColor={{ false: Colors.gray[200], true: Colors.primary }}
-                                thumbColor={Colors.white}
-                                disabled={!settings}
-                            />
-                        </View>
-                        <View style={styles.divider} />
-                        <TouchableOpacity style={styles.row} onPress={changeTheme} disabled={!settings}>
-                            <Text style={styles.settingLabel}>Theme</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={styles.valueText}>
-                                    {settings?.theme ? settings.theme.charAt(0).toUpperCase() + settings.theme.slice(1) : 'Loading...'}
-                                </Text>
-                                <Ionicons name="chevron-forward" size={20} color={Colors.gray[400]} />
-                            </View>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Account</Text>
                     <View style={styles.card}>
@@ -230,19 +118,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
     },
-    divider: {
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.gray[100],
-    },
     settingLabel: {
         fontSize: 16,
         fontFamily: Fonts.primary.regular,
         color: Colors.text.primary,
-    },
-    valueText: {
-        fontSize: 14,
-        fontFamily: Fonts.primary.regular,
-        color: Colors.text.secondary,
-        marginRight: 8,
     },
 });

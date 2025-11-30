@@ -8,10 +8,10 @@ import {
     Alert,
     FlatList,
     Keyboard,
+    KeyboardAvoidingView,
     LayoutAnimation,
     Platform,
     SafeAreaView,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -34,7 +34,6 @@ if (
 type Priority = 'High' | 'Medium' | 'Low';
 
 const PRIORITIES: Priority[] = ['High', 'Medium', 'Low'];
-const DEADLINE_PRESETS = ['1 Week', '1 Month', '3 Months', '6 Months', '1 Year'];
 
 export default function GoalsScreen() {
     const navigation = useNavigation<any>();
@@ -135,30 +134,37 @@ export default function GoalsScreen() {
         setSubmitting(true);
 
         let calculatedDeadline = new Date();
-        switch (deadline) {
-            case '1 Week':
-                calculatedDeadline.setDate(calculatedDeadline.getDate() + 7);
-                break;
-            case '1 Month':
-                calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 1);
-                break;
-            case '3 Months':
-                calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 3);
-                break;
-            case '6 Months':
-                calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 6);
-                break;
-            case '1 Year':
-                calculatedDeadline.setFullYear(calculatedDeadline.getFullYear() + 1);
-                break;
-            default:
-                // Try to parse custom input or default to 1 month
-                const custom = new Date(deadline);
-                if (!isNaN(custom.getTime())) {
-                    calculatedDeadline = custom;
+        const cleanDeadline = deadline.trim();
+
+        // Helper to check if string is a valid date
+        const isValidDate = (d: Date) => d instanceof Date && !isNaN(d.getTime());
+
+        if (cleanDeadline) {
+            // Try parsing as number of days
+            const days = parseInt(cleanDeadline);
+            if (!isNaN(days) && days > 0 && /^\d+$/.test(cleanDeadline)) {
+                calculatedDeadline.setDate(calculatedDeadline.getDate() + days);
+            } else {
+                // Try parsing as date string
+                const parsedDate = new Date(cleanDeadline);
+                if (isValidDate(parsedDate)) {
+                    calculatedDeadline = parsedDate;
                 } else {
-                    calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 1);
+                    // Fallback: try adding current year if missing? 
+                    // For now, if invalid, default to 1 month but warn?
+                    // The requirement says "automatically convert", so we'll default to 1 month if parsing fails completely
+                    // but let's try to be smart about "DD/MM/YYYY" which JS doesn't always like
+                    const parts = cleanDeadline.split(/[-/.]/);
+                    if (parts.length === 3) {
+                        // Assume DD/MM/YYYY or MM/DD/YYYY depending on locale, but let's try ISO YYYY-MM-DD
+                        // If user typed 30-12-2025
+                        const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                        if (isValidDate(d)) calculatedDeadline = d;
+                    }
                 }
+            }
+        } else {
+            calculatedDeadline.setMonth(calculatedDeadline.getMonth() + 1);
         }
 
         try {
@@ -290,115 +296,100 @@ export default function GoalsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Goals</Text>
-                <TouchableOpacity style={styles.addButton} onPress={toggleForm}>
-                    <Ionicons name={isFormVisible ? "close" : "add"} size={24} color={Colors.white} />
-                </TouchableOpacity>
-            </View>
-
-            {isFormVisible && (
-                <View style={styles.formContainer}>
-                    <Text style={styles.formHeader}>New Goal</Text>
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Goal Title (e.g. Learn Guitar)"
-                        placeholderTextColor={Colors.gray[400]}
-                        value={title}
-                        onChangeText={setTitle}
-                    />
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Focus Area (e.g. Hobbies)"
-                        placeholderTextColor={Colors.gray[400]}
-                        value={focus}
-                        onChangeText={setFocus}
-                    />
-
-                    <Text style={styles.label}>Priority</Text>
-                    <View style={styles.chipContainer}>
-                        {PRIORITIES.map((p) => (
-                            <TouchableOpacity
-                                key={p}
-                                style={[
-                                    styles.chip,
-                                    priority === p && { backgroundColor: getPriorityColor(p) }
-                                ]}
-                                onPress={() => {
-                                    hapticsSelection();
-                                    setPriority(p);
-                                }}
-                            >
-                                <Text style={[
-                                    styles.chipText,
-                                    priority === p && { color: Colors.white }
-                                ]}>{p}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    <Text style={styles.label}>Deadline</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollChips}>
-                        {DEADLINE_PRESETS.map((d) => (
-                            <TouchableOpacity
-                                key={d}
-                                style={[
-                                    styles.chip,
-                                    deadline === d && { backgroundColor: Colors.primary }
-                                ]}
-                                onPress={() => {
-                                    hapticsSelection();
-                                    setDeadline(d);
-                                }}
-                            >
-                                <Text style={[
-                                    styles.chipText,
-                                    deadline === d && { color: Colors.white }
-                                ]}>{d}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-
-                    <TextInput
-                        style={[styles.input, { marginTop: 8 }]}
-                        placeholder="Or type custom deadline..."
-                        placeholderTextColor={Colors.gray[400]}
-                        value={deadline}
-                        onChangeText={setDeadline}
-                    />
-
-                    <TouchableOpacity style={styles.submitButton} onPress={handleAddGoal} disabled={submitting}>
-                        {submitting ? (
-                            <ActivityIndicator color={Colors.white} />
-                        ) : (
-                            <Text style={styles.submitButtonText}>Create Goal</Text>
-                        )}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ flex: 1 }}
+            >
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>My Goals</Text>
+                    <TouchableOpacity style={styles.addButton} onPress={toggleForm}>
+                        <Ionicons name={isFormVisible ? "close" : "add"} size={24} color={Colors.white} />
                     </TouchableOpacity>
                 </View>
-            )}
 
-            {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                </View>
-            ) : (
-                <FlatList
-                    data={goals}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
-                    ListHeaderComponent={
-                        <View style={styles.infoContainer}>
-                            <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
-                            <Text style={styles.infoText}>
-                                Mark goals as <Text style={styles.infoHighlight}>Active</Text> to include them in your daily plan.
-                            </Text>
+                {isFormVisible && (
+                    <View style={styles.formContainer}>
+                        <Text style={styles.formHeader}>New Goal</Text>
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Goal Title (e.g. Learn Guitar)"
+                            placeholderTextColor={Colors.gray[400]}
+                            value={title}
+                            onChangeText={setTitle}
+                        />
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Focus Area (e.g. Hobbies)"
+                            placeholderTextColor={Colors.gray[400]}
+                            value={focus}
+                            onChangeText={setFocus}
+                        />
+
+                        <Text style={styles.label}>Priority</Text>
+                        <View style={styles.chipContainer}>
+                            {PRIORITIES.map((p) => (
+                                <TouchableOpacity
+                                    key={p}
+                                    style={[
+                                        styles.chip,
+                                        priority === p && { backgroundColor: getPriorityColor(p) }
+                                    ]}
+                                    onPress={() => {
+                                        hapticsSelection();
+                                        setPriority(p);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.chipText,
+                                        priority === p && { color: Colors.white }
+                                    ]}>{p}</Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-                    }
-                />)}
+
+                        <Text style={styles.label}>Deadline</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Deadline (e.g. '2025-12-31' or '30' days)"
+                            placeholderTextColor={Colors.gray[400]}
+                            value={deadline}
+                            onChangeText={setDeadline}
+                        />
+
+                        <TouchableOpacity style={styles.submitButton} onPress={handleAddGoal} disabled={submitting}>
+                            {submitting ? (
+                                <ActivityIndicator color={Colors.white} />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Create Goal</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {loading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : (
+                    <FlatList
+                        style={{ flex: 1 }}
+                        data={goals}
+                        renderItem={renderItem}
+                        keyExtractor={item => item.id}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={
+                            <View style={styles.infoContainer}>
+                                <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
+                                <Text style={styles.infoText}>
+                                    Mark goals as <Text style={styles.infoHighlight}>Active</Text> to include them in your daily plan.
+                                </Text>
+                            </View>
+                        }
+                    />)}
+            </KeyboardAvoidingView>
         </SafeAreaView>
     )
 }

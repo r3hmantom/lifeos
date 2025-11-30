@@ -60,6 +60,38 @@ export interface UserSettings {
   updatedAt: string;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  context?: {
+    date?: string;
+    timezone?: string;
+    selectedGoalIds?: string[];
+    selectedMemoryIds?: string[];
+  };
+}
+
+export interface ChatResponse {
+  message: string;
+  intent:
+    | "chat"
+    | "schedule_generated"
+    | "schedule_modified"
+    | "clarification_needed";
+  data?: any;
+}
+
+export interface InsightMetrics {
+  productivityScore: number;
+  categoryDistribution: Record<string, number>;
+  completedTasks: number;
+  totalTasks: number;
+}
+
 const BASE_URL = "http://192.168.1.12:8080/api/v1";
 
 async function request<T>(
@@ -192,6 +224,26 @@ export const ApiService = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+  },
+
+  assistant: {
+    chat: (data: ChatRequest) =>
+      request<ChatResponse>("/assistant/chat", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  insights: {
+    get: (startDate?: string, endDate?: string) => {
+      const params = new URLSearchParams();
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      const queryString = params.toString();
+      return request<InsightMetrics>(
+        `/insights${queryString ? `?${queryString}` : ""}`
+      );
+    },
   },
 
   settings: {

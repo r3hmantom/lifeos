@@ -8,6 +8,7 @@ import {
     Alert,
     FlatList,
     Keyboard,
+    KeyboardAvoidingView,
     LayoutAnimation,
     Platform,
     SafeAreaView,
@@ -250,68 +251,74 @@ export default function MemoriesScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Memories</Text>
-                <TouchableOpacity style={styles.addButton} onPress={toggleForm}>
-                    <Ionicons name={isFormVisible ? "close" : "add"} size={24} color={Colors.white} />
-                </TouchableOpacity>
-            </View>
-
-            {isFormVisible && (
-                <View style={styles.formContainer}>
-                    <Text style={styles.formHeader}>New Memory</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Title"
-                        placeholderTextColor={Colors.gray[400]}
-                        value={title}
-                        onChangeText={setTitle}
-                    />
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="What's on your mind?"
-                        placeholderTextColor={Colors.gray[400]}
-                        value={description}
-                        onChangeText={setDescription}
-                        multiline
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Tags (comma separated)"
-                        placeholderTextColor={Colors.gray[400]}
-                        value={tagInput}
-                        onChangeText={setTagInput}
-                    />
-                    <TouchableOpacity style={styles.submitButton} onPress={handleAddMemory} disabled={submitting}>
-                        {submitting ? (
-                            <ActivityIndicator color={Colors.white} />
-                        ) : (
-                            <Text style={styles.submitButtonText}>Save Memory</Text>
-                        )}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ flex: 1 }}
+            >
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>My Memories</Text>
+                    <TouchableOpacity style={styles.addButton} onPress={toggleForm}>
+                        <Ionicons name={isFormVisible ? "close" : "add"} size={24} color={Colors.white} />
                     </TouchableOpacity>
                 </View>
-            )}
 
-            {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                </View>
-            ) : (
-                <FlatList
-                    data={memories}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
-                    ListHeaderComponent={
-                        <View style={styles.infoContainer}>
-                            <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
-                            <Text style={styles.infoText}>
-                                Mark memories as <Text style={styles.infoHighlight}>Active</Text> to reflect on them in your daily plan.
-                            </Text>
-                        </View>
-                    }
-                />)}
+                {isFormVisible && (
+                    <View style={styles.formContainer}>
+                        <Text style={styles.formHeader}>New Memory</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Title"
+                            placeholderTextColor={Colors.gray[400]}
+                            value={title}
+                            onChangeText={setTitle}
+                        />
+                        <TextInput
+                            style={[styles.input, styles.textArea]}
+                            placeholder="What's on your mind?"
+                            placeholderTextColor={Colors.gray[400]}
+                            value={description}
+                            onChangeText={setDescription}
+                            multiline
+                        />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Tags (comma separated)"
+                            placeholderTextColor={Colors.gray[400]}
+                            value={tagInput}
+                            onChangeText={setTagInput}
+                        />
+                        <TouchableOpacity style={styles.submitButton} onPress={handleAddMemory} disabled={submitting}>
+                            {submitting ? (
+                                <ActivityIndicator color={Colors.white} />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Save Memory</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {loading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : (
+                    <FlatList
+                        style={{ flex: 1 }}
+                        data={memories}
+                        renderItem={renderItem}
+                        keyExtractor={item => item.id}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={
+                            <View style={styles.infoContainer}>
+                                <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
+                                <Text style={styles.infoText}>
+                                    Mark memories as <Text style={styles.infoHighlight}>Active</Text> to reflect on them in your daily plan.
+                                </Text>
+                            </View>
+                        }
+                    />)}
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
