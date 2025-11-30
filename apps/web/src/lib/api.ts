@@ -140,4 +140,9 @@ export const settingsApi = {
     api.patch<UserSettings>("/settings", data),
 };
 
+export const userApi = {
+  get: () => api.get<User>("/auth/me"),
+  update: (data: { name: string }) => api.patch<User>("/auth/profile", data),
+};
+
 export default api;

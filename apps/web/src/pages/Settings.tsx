@@ -2,8 +2,9 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { settingsApi } from "@/lib/api"
+import { settingsApi, userApi } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
     Form,
     FormControl,
@@ -30,6 +31,10 @@ const formSchema = z.object({
     timezone: z.string(),
 })
 
+const profileFormSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+})
+
 export default function Settings() {
     const [isLoading, setIsLoading] = useState(false)
 
@@ -42,9 +47,26 @@ export default function Settings() {
         },
     })
 
+    const profileForm = useForm<z.infer<typeof profileFormSchema>>({
+        resolver: zodResolver(profileFormSchema),
+        defaultValues: {
+            name: "",
+        },
+    })
+
     useEffect(() => {
         fetchSettings()
+        fetchUser()
     }, [])
+
+    const fetchUser = async () => {
+        try {
+            const response = await userApi.get()
+            profileForm.reset({ name: response.data.name })
+        } catch (error) {
+            console.error("Failed to fetch user")
+        }
+    }
 
     const fetchSettings = async () => {
         try {
@@ -72,9 +94,45 @@ export default function Settings() {
         }
     }
 
+    async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
+        try {
+            await userApi.update(values)
+            toast.success("Profile updated")
+        } catch (error) {
+            toast.error("Failed to update profile")
+        }
+    }
+
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Profile</CardTitle>
+                    <CardDescription>Manage your public profile.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...profileForm}>
+                        <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                            <FormField
+                                control={profileForm.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Your name" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit">Save Profile</Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>
