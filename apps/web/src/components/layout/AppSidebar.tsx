@@ -1,4 +1,4 @@
-import { Calendar, CheckSquare, Home, Settings, StickyNote } from "lucide-react"
+import { Calendar, CheckSquare, Home, Settings, StickyNote, LayoutDashboard, Sparkles } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
@@ -15,9 +15,19 @@ import { Link, useLocation } from "react-router-dom"
 // Menu items.
 const items = [
     {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+    },
+    {
         title: "Schedule",
         url: "/schedule",
         icon: Calendar,
+    },
+    {
+        title: "AI Planner",
+        url: "/assistant",
+        icon: Sparkles,
     },
     {
         title: "Goals",

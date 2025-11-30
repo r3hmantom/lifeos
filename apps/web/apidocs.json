@@ -96,11 +96,7 @@
           },
           "priority": {
             "type": "string",
-            "enum": [
-              "High",
-              "Medium",
-              "Low"
-            ]
+            "enum": ["High", "Medium", "Low"]
           },
           "isActive": {
             "type": "boolean"
@@ -159,6 +155,134 @@
                 "type": "string"
               }
             }
+          },
+          "goalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "memoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "customPrompt": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant", "system"]
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatRequest": {
+        "type": "object",
+        "required": ["messages"],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            }
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "selectedGoalIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "selectedMemoryIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "schedule_generated",
+              "clarification_needed",
+              "schedule_modified"
+            ]
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "BatchScheduleRequest": {
+        "type": "object",
+        "required": ["date", "items"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleItem"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Audit trail data like prompt used, goals selected"
+          }
+        }
+      },
+      "InsightMetrics": {
+        "type": "object",
+        "properties": {
+          "productivityScore": {
+            "type": "number"
+          },
+          "categoryDistribution": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "completedTasks": {
+            "type": "number"
+          },
+          "totalTasks": {
+            "type": "number"
           }
         }
       },
@@ -175,11 +299,7 @@
           },
           "theme": {
             "type": "string",
-            "enum": [
-              "light",
-              "dark",
-              "system"
-            ]
+            "enum": ["light", "dark", "system"]
           },
           "notificationsEnabled": {
             "type": "boolean"
@@ -201,23 +321,50 @@
     }
   ],
   "paths": {
-    "/auth/register": {
+    "/assistant/chat": {
       "post": {
-        "summary": "Register new user",
-        "tags": [
-          "Auth"
+        "summary": "Chat with the AI assistant for schedule planning",
+        "tags": ["Assistant"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Assistant response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register new user",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
                 "type": "object",
-                "required": [
-                  "name",
-                  "email",
-                  "password"
-                ],
+                "required": ["name", "email", "password"],
                 "properties": {
                   "name": {
                     "type": "string"
@@ -253,19 +400,14 @@
     "/auth/login": {
       "post": {
         "summary": "Authenticate existing user",
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "email",
-                  "password"
-                ],
+                "required": ["email", "password"],
                 "properties": {
                   "email": {
                     "type": "string"
@@ -298,9 +440,7 @@
     "/goals": {
       "get": {
         "summary": "Get all user goals",
-        "tags": [
-          "Goals"
-        ],
+        "tags": ["Goals"],
         "security": [
           {
             "bearerAuth": []
@@ -329,9 +469,7 @@
       },
       "post": {
         "summary": "Create a new goal",
-        "tags": [
-          "Goals"
-        ],
+        "tags": ["Goals"],
         "security": [
           {
             "bearerAuth": []
@@ -343,12 +481,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "title",
-                  "focus",
-                  "deadline",
-                  "priority"
-                ],
+                "required": ["title", "focus", "deadline", "priority"],
                 "properties": {
                   "title": {
                     "type": "string"
@@ -362,11 +495,7 @@
                   },
                   "priority": {
                     "type": "string",
-                    "enum": [
-                      "High",
-                      "Medium",
-                      "Low"
-                    ]
+                    "enum": ["High", "Medium", "Low"]
                   }
                 }
               }
@@ -390,9 +519,7 @@
     "/goals/{id}": {
       "patch": {
         "summary": "Update a goal",
-        "tags": [
-          "Goals"
-        ],
+        "tags": ["Goals"],
         "security": [
           {
             "bearerAuth": []
@@ -427,11 +554,7 @@
                   },
                   "priority": {
                     "type": "string",
-                    "enum": [
-                      "High",
-                      "Medium",
-                      "Low"
-                    ]
+                    "enum": ["High", "Medium", "Low"]
                   },
                   "isActive": {
                     "type": "boolean"
@@ -456,9 +579,7 @@
       },
       "delete": {
         "summary": "Delete a goal",
-        "tags": [
-          "Goals"
-        ],
+        "tags": ["Goals"],
         "security": [
           {
             "bearerAuth": []
@@ -481,12 +602,51 @@
         }
       }
     },
+    "/insights": {
+      "get": {
+        "summary": "Get productivity insights and metrics",
+        "tags": ["Insights"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Insights data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightMetrics"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/memories": {
       "get": {
         "summary": "Get all user memories",
-        "tags": [
-          "Memories"
-        ],
+        "tags": ["Memories"],
         "security": [
           {
             "bearerAuth": []
@@ -515,9 +675,7 @@
       },
       "post": {
         "summary": "Create a new memory/commitment",
-        "tags": [
-          "Memories"
-        ],
+        "tags": ["Memories"],
         "security": [
           {
             "bearerAuth": []
@@ -529,11 +687,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "title",
-                  "description",
-                  "date"
-                ],
+                "required": ["title", "description", "date"],
                 "properties": {
                   "title": {
                     "type": "string"
@@ -573,9 +727,7 @@
     "/memories/{id}": {
       "patch": {
         "summary": "Update a memory",
-        "tags": [
-          "Memories"
-        ],
+        "tags": ["Memories"],
         "security": [
           {
             "bearerAuth": []
@@ -637,9 +789,7 @@
       },
       "delete": {
         "summary": "Delete a memory",
-        "tags": [
-          "Memories"
-        ],
+        "tags": ["Memories"],
         "security": [
           {
             "bearerAuth": []
@@ -665,9 +815,7 @@
     "/schedule": {
       "get": {
         "summary": "Get the generated schedule for a specific date",
-        "tags": [
-          "Schedule"
-        ],
+        "tags": ["Schedule"],
         "security": [
           {
             "bearerAuth": []
@@ -710,9 +858,7 @@
       },
       "post": {
         "summary": "Create a new schedule item manually",
-        "tags": [
-          "Schedule"
-        ],
+        "tags": ["Schedule"],
         "security": [
           {
             "bearerAuth": []
@@ -745,9 +891,7 @@
     "/schedule/{id}": {
       "patch": {
         "summary": "Update a schedule item",
-        "tags": [
-          "Schedule"
-        ],
+        "tags": ["Schedule"],
         "security": [
           {
             "bearerAuth": []
@@ -788,9 +932,7 @@
       },
       "delete": {
         "summary": "Delete a schedule item",
-        "tags": [
-          "Schedule"
-        ],
+        "tags": ["Schedule"],
         "security": [
           {
             "bearerAuth": []
@@ -816,9 +958,7 @@
     "/schedule/generate": {
       "post": {
         "summary": "Trigger AI to generate a schedule",
-        "tags": [
-          "Schedule"
-        ],
+        "tags": ["Schedule"],
         "security": [
           {
             "bearerAuth": []
@@ -867,12 +1007,36 @@
         }
       }
     },
+    "/schedule/batch": {
+      "post": {
+        "summary": "Save multiple schedule items at once",
+        "tags": ["Schedule"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule items saved successfully"
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "summary": "Get user settings",
-        "tags": [
-          "Settings"
-        ],
+        "tags": ["Settings"],
         "security": [
           {
             "bearerAuth": []
@@ -893,9 +1057,7 @@
       },
       "patch": {
         "summary": "Update user settings",
-        "tags": [
-          "Settings"
-        ],
+        "tags": ["Settings"],
         "security": [
           {
             "bearerAuth": []
@@ -910,11 +1072,7 @@
                 "properties": {
                   "theme": {
                     "type": "string",
-                    "enum": [
-                      "light",
-                      "dark",
-                      "system"
-                    ]
+                    "enum": ["light", "dark", "system"]
                   },
                   "notificationsEnabled": {
                     "type": "boolean"
@@ -944,12 +1102,20 @@
   },
   "tags": [
     {
+      "name": "Assistant",
+      "description": "AI Assistant endpoints"
+    },
+    {
       "name": "Auth",
       "description": "Authentication endpoints"
     },
     {
       "name": "Goals",
       "description": "Goal management endpoints"
+    },
+    {
+      "name": "Insights",
+      "description": "Productivity insights endpoints"
     },
     {
       "name": "Memories",

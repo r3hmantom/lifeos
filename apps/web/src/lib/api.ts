@@ -50,6 +50,47 @@ export interface ScheduleGenerationRequest {
     startOfDay?: string;
     endOfDay?: string;
   };
+  goalIds?: string[];
+  memoryIds?: string[];
+  customPrompt?: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  context?: {
+    date?: string;
+    timezone?: string;
+    selectedGoalIds?: string[];
+    selectedMemoryIds?: string[];
+  };
+}
+
+export interface ChatResponse {
+  message: string;
+  intent:
+    | "chat"
+    | "schedule_generated"
+    | "clarification_needed"
+    | "schedule_modified";
+  data?: any;
+}
+
+export interface BatchScheduleRequest {
+  date: string;
+  items: ScheduleItem[];
+  metadata?: any;
+}
+
+export interface InsightMetrics {
+  productivityScore: number;
+  categoryDistribution: Record<string, number>;
+  completedTasks: number;
+  totalTasks: number;
 }
 
 export interface UserSettings {
@@ -73,7 +114,7 @@ export interface TimetableSlot {
 
 // API Client
 
-const API_URL = "http://localhost:8080/api/v1";
+const API_URL = "https://lifeos-backend-production.up.railway.app/api/v1";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -132,6 +173,17 @@ export const scheduleApi = {
       message: string;
       schedule: { date: string; items: ScheduleItem[] };
     }>("/schedule/generate", data),
+  batchCreate: (data: BatchScheduleRequest) =>
+    api.post("/schedule/batch", data),
+};
+
+export const assistantApi = {
+  chat: (data: ChatRequest) => api.post<ChatResponse>("/assistant/chat", data),
+};
+
+export const insightsApi = {
+  get: (startDate?: string, endDate?: string) =>
+    api.get<InsightMetrics>("/insights", { params: { startDate, endDate } }),
 };
 
 export const settingsApi = {
