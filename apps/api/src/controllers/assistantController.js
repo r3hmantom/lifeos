@@ -95,18 +95,18 @@ exports.chat = async (req, res) => {
       };
     }
 
+    const setTime = (timeStr) => {
+      const [hours, minutes] = timeStr.split(":").map(Number);
+      const d = new Date(targetDate);
+      d.setHours(hours, minutes, 0, 0);
+      return d;
+    };
+
     // Handle Schedule Modifications
     if (
       parsedResponse.intent === "schedule_modified" &&
       parsedResponse.data?.modifications
     ) {
-      const setTime = (timeStr) => {
-        const [hours, minutes] = timeStr.split(":").map(Number);
-        const d = new Date(targetDate);
-        d.setHours(hours, minutes, 0, 0);
-        return d;
-      };
-
       await prisma.$transaction(async (tx) => {
         for (const mod of parsedResponse.data.modifications) {
           if (mod.action === "create") {
@@ -139,6 +139,46 @@ exports.chat = async (req, res) => {
               where: { id: mod.id, userId: req.userId },
             });
           }
+        }
+      });
+
+      // Fetch updated schedule to return
+      const updatedSchedule = await prisma.scheduleItem.findMany({
+        where: {
+          userId: req.userId,
+          startTime: { gte: startOfDay, lte: endOfDay },
+        },
+        orderBy: { startTime: "asc" },
+      });
+
+      parsedResponse.data.schedule = {
+        date: context.date,
+        items: updatedSchedule,
+      };
+    }
+
+    // Handle Schedule Generation
+    if (
+      parsedResponse.intent === "schedule_generated" &&
+      parsedResponse.data?.schedule
+    ) {
+      await prisma.$transaction(async (tx) => {
+        const items = Array.isArray(parsedResponse.data.schedule)
+          ? parsedResponse.data.schedule
+          : [];
+
+        for (const item of items) {
+          await tx.scheduleItem.create({
+            data: {
+              title: item.title,
+              description: item.description,
+              startTime: setTime(item.startTime),
+              endTime: setTime(item.endTime),
+              type: item.type || "manual",
+              userId: req.userId,
+              isCompleted: false,
+            },
+          });
         }
       });
 

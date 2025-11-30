@@ -75,6 +75,10 @@ Intents:
 For "schedule_modified", return a "modifications" array in "data".
 Actions: "create", "update", "delete".
 For "create" and "update", use "startTime" and "endTime" in "HH:mm" format.
+
+For "schedule_generated", return a "schedule" array in "data".
+Each item should have: "title", "description", "startTime" (HH:mm), "endTime" (HH:mm), "type" (one of: "fixed_commitment", "goal_task", "routine", "other").
+
 Example:
 {
   "message": "I've moved the meeting.",
@@ -84,14 +88,6 @@ Example:
       { "action": "update", "id": "ITEM_ID", "data": { "startTime": "15:00", "endTime": "16:00" } }
     ]
   }
-}
-
-Output Format:
-Return ONLY a valid JSON object.
-{
-  "message": "Your textual response to the user",
-  "intent": "chat" | "schedule_generated" | "schedule_modified" | "clarification_needed",
-  "data": {} // Optional data payload
 }
 `;
 };
