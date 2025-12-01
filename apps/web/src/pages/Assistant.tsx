@@ -22,7 +22,7 @@ const generateUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
     }
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
@@ -136,7 +136,7 @@ export default function Assistant() {
                             start = `${today}T${start}:00`; // Fallback
                         }
                     }
-                    
+
                     if (end && !end.includes("T") && end.includes(":")) {
                         const endDate = new Date(`${today}T${end}:00`);
                         if (!isNaN(endDate.getTime())) {
@@ -176,10 +176,10 @@ export default function Assistant() {
                 toast.info("Schedule proposal updated. Please review and save.")
                 // If the backend returns the updated schedule, we could show it or just notify
                 if (responseData.data?.schedule) {
-                     setProposedSchedule({
+                    setProposedSchedule({
                         ...responseData.data.schedule,
                         items: responseData.data.schedule.items || []
-                     })
+                    })
                 } else if (responseData.data?.modifications) {
                     // Convert modifications to preview format
                     const today = format(new Date(), "yyyy-MM-dd");
@@ -200,7 +200,7 @@ export default function Assistant() {
                                     start = `${today}T${start}:00`; // Fallback
                                 }
                             }
-                            
+
                             if (end && !end.includes("T") && end.includes(":")) {
                                 const endDate = new Date(`${today}T${end}:00`);
                                 if (!isNaN(endDate.getTime())) {

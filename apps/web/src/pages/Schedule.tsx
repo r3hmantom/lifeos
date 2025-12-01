@@ -125,7 +125,7 @@ export default function Schedule() {
                     endOfDay: "17:00"
                 }
             })
-            
+
             let rawItems: any[] = [];
             if (Array.isArray(response.data.schedule)) {
                 rawItems = response.data.schedule;
@@ -134,27 +134,27 @@ export default function Schedule() {
             }
 
             const items = rawItems.map((d: any) => {
-                 let start = d.startTime;
-                 let end = d.endTime;
+                let start = d.startTime;
+                let end = d.endTime;
 
-                 // If time is just HH:mm, append to selected date
-                 if (start && !start.includes("T") && start.includes(":")) {
-                     start = `${formattedDate}T${start}:00`;
-                 }
-                 
-                 if (end && !end.includes("T") && end.includes(":")) {
-                     end = `${formattedDate}T${end}:00`;
-                 }
+                // If time is just HH:mm, append to selected date
+                if (start && !start.includes("T") && start.includes(":")) {
+                    start = `${formattedDate}T${start}:00`;
+                }
 
-                 return {
-                     id: d.id || crypto.randomUUID(),
-                     title: d.title,
-                     description: d.description,
-                     startTime: start,
-                     endTime: end,
-                     type: d.type || "work",
-                     isCompleted: false
-                 } as ScheduleItem;
+                if (end && !end.includes("T") && end.includes(":")) {
+                    end = `${formattedDate}T${end}:00`;
+                }
+
+                return {
+                    id: d.id || crypto.randomUUID(),
+                    title: d.title,
+                    description: d.description,
+                    startTime: start,
+                    endTime: end,
+                    type: d.type || "work",
+                    isCompleted: false
+                } as ScheduleItem;
             });
 
             items.sort((a: ScheduleItem, b: ScheduleItem) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
@@ -260,8 +260,8 @@ export default function Schedule() {
 
     const toggleComplete = async (item: ScheduleItem) => {
         if (proposedSchedule) {
-             setProposedSchedule(proposedSchedule.map(s => s.id === item.id ? { ...s, isCompleted: !item.isCompleted } : s))
-             return
+            setProposedSchedule(proposedSchedule.map(s => s.id === item.id ? { ...s, isCompleted: !item.isCompleted } : s))
+            return
         }
 
         try {
@@ -288,7 +288,7 @@ export default function Schedule() {
         for (let i = 0; i < type.length; i++) {
             hash = type.charCodeAt(i) + ((hash << 5) - hash);
         }
-        
+
         // Palette of light, pleasant pastel colors
         const colors = [
             "bg-red-100 border-red-200 hover:bg-red-200/70",
@@ -316,7 +316,7 @@ export default function Schedule() {
 
     const getCurrentTask = () => {
         const now = currentTime;
-        const currentTask = schedule.find(item => 
+        const currentTask = schedule.find(item =>
             isWithinInterval(now, { start: new Date(item.startTime), end: new Date(item.endTime) })
         );
         return currentTask;
@@ -328,7 +328,7 @@ export default function Schedule() {
 
     return (
         <div className="space-y-6 h-full flex flex-col">
-             <Card className="bg-linear-to-r from-blue-50 to-indigo-50 border-none shadow-sm">
+            <Card className="bg-linear-to-r from-blue-50 to-indigo-50 border-none shadow-sm">
                 <CardContent className="p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-white rounded-full shadow-sm">
@@ -348,15 +348,15 @@ export default function Schedule() {
                             Current Activity
                         </p>
                         {currentTask ? (
-                             <div>
+                            <div>
                                 <h3 className="text-lg font-semibold text-foreground">
                                     {currentTask.title}
                                 </h3>
                                 <div className="flex items-center gap-2 mt-1">
-                                     <Badge variant="secondary">
+                                    <Badge variant="secondary">
                                         {format(new Date(currentTask.startTime), "h:mm a")} - {format(new Date(currentTask.endTime), "h:mm a")}
-                                     </Badge>
-                                     <Badge variant="outline">{currentTask.type}</Badge>
+                                    </Badge>
+                                    <Badge variant="outline">{currentTask.type}</Badge>
                                 </div>
                             </div>
                         ) : (
@@ -500,7 +500,7 @@ export default function Schedule() {
                             />
                         </PopoverContent>
                     </Popover>
-                    
+
                     {proposedSchedule ? (
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={handleDiscardSchedule} className="text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/10">
@@ -587,16 +587,16 @@ export default function Schedule() {
                                     const startHour = start.getHours() + start.getMinutes() / 60;
                                     const endHour = end.getHours() + end.getMinutes() / 60;
                                     const duration = endHour - startHour;
-                                    
+
                                     // Assuming day starts at 00:00 and ends at 24:00 for simplicity, 
                                     // or better yet, dynamic range based on earliest/latest item + buffer
                                     // Let's use fixed height pixels per hour for a vertical scrollable timeline
                                     const pixelsPerHour = 60;
                                     const topOffset = startHour * pixelsPerHour;
                                     const height = Math.max(duration * pixelsPerHour, 40); // Minimum height
-                                    
-                                    const colorClass = item.isCompleted 
-                                        ? "bg-muted/50 border-border hover:bg-muted/70" 
+
+                                    const colorClass = item.isCompleted
+                                        ? "bg-muted/50 border-border hover:bg-muted/70"
                                         : getColorForType(item.type);
 
                                     return (
@@ -623,8 +623,8 @@ export default function Schedule() {
                                                             <span className="text-xs font-medium text-muted-foreground/80 whitespace-nowrap">
                                                                 {format(start, "h:mm a")} - {format(end, "h:mm a")}
                                                             </span>
-                                                            <Badge 
-                                                                variant="secondary" 
+                                                            <Badge
+                                                                variant="secondary"
                                                                 className="text-[10px] px-1 py-0 h-5 bg-background/50 hover:bg-background/80 border-black/5"
                                                             >
                                                                 {item.type}
@@ -641,7 +641,7 @@ export default function Schedule() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-0.5 shrink-0">
-                                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditDialog(item)}>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditDialog(item)}>
                                                         <Pencil className="h-3 w-3" />
                                                     </Button>
                                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item.id)}>
