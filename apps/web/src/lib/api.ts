@@ -114,7 +114,8 @@ export interface TimetableSlot {
 
 // API Client
 
-const API_URL = "https://lifeos-backend-production.up.railway.app/api/v1";
+// const API_URL = "https://lifeos-backend-production.up.railway.app/api/v1";
+const API_URL = "http://localhost:8080/api/v1";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -171,7 +172,7 @@ export const scheduleApi = {
   generate: (data: ScheduleGenerationRequest) =>
     api.post<{
       message: string;
-      schedule: { date: string; items: ScheduleItem[] };
+      schedule: { date: string; items: ScheduleItem[] } | ScheduleItem[];
     }>("/schedule/generate", data),
   batchCreate: (data: BatchScheduleRequest) =>
     api.post("/schedule/batch", data),

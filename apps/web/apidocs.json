@@ -237,8 +237,10 @@
             "enum": [
               "chat",
               "schedule_generated",
-              "clarification_needed",
-              "schedule_modified"
+              "schedule_modified",
+              "goal_proposed",
+              "memory_proposed",
+              "clarification_needed"
             ]
           },
           "data": {

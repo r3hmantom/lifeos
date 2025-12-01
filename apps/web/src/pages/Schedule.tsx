@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { format, isWithinInterval } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, RefreshCw, Plus, Pencil, Trash2, Clock } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, RefreshCw, Plus, Pencil, Trash2, Clock, Check, X, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -49,6 +49,7 @@ const scheduleFormSchema = z.object({
 export default function Schedule() {
     const [date, setDate] = useState<Date>(new Date())
     const [schedule, setSchedule] = useState<ScheduleItem[]>([])
+    const [proposedSchedule, setProposedSchedule] = useState<ScheduleItem[] | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
     const [isItemDialogOpen, setIsItemDialogOpen] = useState(false)
@@ -124,8 +125,41 @@ export default function Schedule() {
                     endOfDay: "17:00"
                 }
             })
-            setSchedule(response.data.schedule.items)
-            toast.success("Schedule generated successfully")
+            
+            let rawItems: any[] = [];
+            if (Array.isArray(response.data.schedule)) {
+                rawItems = response.data.schedule;
+            } else if (response.data.schedule && 'items' in response.data.schedule && Array.isArray((response.data.schedule as any).items)) {
+                rawItems = (response.data.schedule as any).items;
+            }
+
+            const items = rawItems.map((d: any) => {
+                 let start = d.startTime;
+                 let end = d.endTime;
+
+                 // If time is just HH:mm, append to selected date
+                 if (start && !start.includes("T") && start.includes(":")) {
+                     start = `${formattedDate}T${start}:00`;
+                 }
+                 
+                 if (end && !end.includes("T") && end.includes(":")) {
+                     end = `${formattedDate}T${end}:00`;
+                 }
+
+                 return {
+                     id: d.id || crypto.randomUUID(),
+                     title: d.title,
+                     description: d.description,
+                     startTime: start,
+                     endTime: end,
+                     type: d.type || "work",
+                     isCompleted: false
+                 } as ScheduleItem;
+            });
+
+            items.sort((a: ScheduleItem, b: ScheduleItem) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+            setProposedSchedule(items)
+            toast.success("Schedule generated. Please review and save.")
         } catch (error) {
             toast.error("Failed to generate schedule")
         } finally {
@@ -133,11 +167,56 @@ export default function Schedule() {
         }
     }
 
+    const handleAcceptSchedule = async () => {
+        if (!proposedSchedule) return
+        setIsGenerating(true)
+        try {
+            await scheduleApi.batchCreate({
+                date: format(date, "yyyy-MM-dd"),
+                items: proposedSchedule
+            })
+            setSchedule(proposedSchedule)
+            setProposedSchedule(null)
+            toast.success("Schedule saved successfully")
+        } catch (error) {
+            toast.error("Failed to save schedule")
+        } finally {
+            setIsGenerating(false)
+        }
+    }
+
+    const handleDiscardSchedule = () => {
+        setProposedSchedule(null)
+        toast.info("Proposed schedule discarded")
+    }
+
     const onSubmit = async (values: z.infer<typeof scheduleFormSchema>) => {
         try {
             const baseDate = format(date, "yyyy-MM-dd")
             const startDateTime = `${baseDate}T${values.startTime}:00`
             const endDateTime = `${baseDate}T${values.endTime}:00`
+
+            if (proposedSchedule) {
+                const newItem = {
+                    id: editingItem ? editingItem.id : crypto.randomUUID(),
+                    ...values,
+                    startTime: new Date(startDateTime).toISOString(),
+                    endTime: new Date(endDateTime).toISOString(),
+                    type: values.type,
+                    isCompleted: false
+                } as ScheduleItem
+
+                if (editingItem) {
+                    setProposedSchedule(proposedSchedule.map(i => i.id === editingItem.id ? { ...i, ...newItem } : i))
+                    toast.success("Item updated in proposal")
+                } else {
+                    setProposedSchedule([...proposedSchedule, newItem])
+                    toast.success("Item added to proposal")
+                }
+                setIsItemDialogOpen(false)
+                setEditingItem(null)
+                return;
+            }
 
             if (editingItem) {
                 await scheduleApi.update(editingItem.id, {
@@ -164,6 +243,12 @@ export default function Schedule() {
     }
 
     const handleDelete = async (id: string) => {
+        if (proposedSchedule) {
+            setProposedSchedule(proposedSchedule.filter(item => item.id !== id))
+            toast.success("Item removed from proposal")
+            return
+        }
+
         try {
             await scheduleApi.delete(id)
             toast.success("Item deleted")
@@ -174,6 +259,11 @@ export default function Schedule() {
     }
 
     const toggleComplete = async (item: ScheduleItem) => {
+        if (proposedSchedule) {
+             setProposedSchedule(proposedSchedule.map(s => s.id === item.id ? { ...s, isCompleted: !item.isCompleted } : s))
+             return
+        }
+
         try {
             await scheduleApi.update(item.id, { isCompleted: !item.isCompleted })
             setSchedule(schedule.map(s => s.id === item.id ? { ...s, isCompleted: !item.isCompleted } : s))
@@ -234,9 +324,11 @@ export default function Schedule() {
 
     const currentTask = getCurrentTask();
 
+    const displaySchedule = proposedSchedule || schedule
+
     return (
         <div className="space-y-6 h-full flex flex-col">
-             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-none shadow-sm">
+             <Card className="bg-linear-to-r from-blue-50 to-indigo-50 border-none shadow-sm">
                 <CardContent className="p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-white rounded-full shadow-sm">
@@ -408,25 +500,53 @@ export default function Schedule() {
                             />
                         </PopoverContent>
                     </Popover>
-                    <Button onClick={handleGenerateSchedule} disabled={isGenerating}>
-                        {isGenerating ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Generating...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Generate AI Schedule
-                            </>
-                        )}
-                    </Button>
+                    
+                    {proposedSchedule ? (
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleDiscardSchedule} className="text-destructive hover:text-destructive border-destructive/20 hover:bg-destructive/10">
+                                <X className="mr-2 h-4 w-4" />
+                                Discard
+                            </Button>
+                            <Button onClick={handleAcceptSchedule} disabled={isGenerating} className="bg-green-600 hover:bg-green-700">
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                Save Schedule
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button onClick={handleGenerateSchedule} disabled={isGenerating}>
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Generate AI Schedule
+                                </>
+                            )}
+                        </Button>
+                    )}
                 </div>
             </div>
 
+            {proposedSchedule && (
+                <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/20 rounded-full">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-medium text-primary">AI Generated Schedule Proposal</p>
+                            <p className="text-sm text-muted-foreground">Review the proposed schedule below. Click "Save Schedule" to apply these changes.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardHeader>
-                    <CardTitle>Daily Timeline</CardTitle>
+                    <CardTitle>Daily Timeline {proposedSchedule && <Badge variant="outline" className="ml-2 border-primary text-primary">Preview Mode</Badge>}</CardTitle>
                     <CardDescription>
                         Your schedule for {format(date, "MMMM do, yyyy")}
                     </CardDescription>
@@ -436,7 +556,7 @@ export default function Schedule() {
                         <div className="flex h-full items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
-                    ) : schedule.length === 0 ? (
+                    ) : displaySchedule.length === 0 ? (
                         <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
                             <p>No schedule items found for this day.</p>
                             <Button variant="link" onClick={handleGenerateSchedule}>
@@ -460,7 +580,7 @@ export default function Schedule() {
                                     </div>
                                 ))}
 
-                                {schedule.map((item) => {
+                                {displaySchedule.map((item) => {
                                     // Calculate height and position based on time
                                     const start = new Date(item.startTime);
                                     const end = new Date(item.endTime);

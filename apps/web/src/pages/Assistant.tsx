@@ -18,6 +18,16 @@ interface ProposedSchedule {
     items: ScheduleItem[];
 }
 
+const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
 export default function Assistant() {
     const [messages, setMessages] = useState<ChatMessage[]>([
         { role: "assistant", content: "Hello! I'm your LifeOS assistant. I can help you plan your day based on your goals and memories. What would you like to do?" }
@@ -80,19 +90,143 @@ export default function Assistant() {
                 }
             })
 
+            let responseData = response.data;
+            let displayMessage = response.data.message;
+
+            // Check for embedded JSON in markdown code blocks if intent is chat
+            // or if the message contains a code block that looks like our protocol
+            // Improved regex to be more lenient with whitespace and optional language tag
+            const jsonMatch = response.data.message.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+                try {
+                    const parsed = JSON.parse(jsonMatch[1]);
+                    // If the parsed JSON has an intent, use it as the source of truth for data
+                    if (parsed.intent && parsed.intent !== "chat") {
+                        responseData = parsed;
+                        // Clean up the message to remove the JSON block for display purposes
+                        displayMessage = response.data.message.replace(/```(?:json)?\s*[\s\S]*?\s*```/, "").trim();
+                    }
+                } catch (e) {
+                    console.error("Failed to parse embedded JSON", e);
+                }
+            }
+
             const assistantMessage: ChatMessage = {
                 role: "assistant",
-                content: response.data.message
+                content: displayMessage
             }
             setMessages(prev => [...prev, assistantMessage])
 
-            if (response.data.intent === "schedule_generated" && response.data.data?.schedule) {
-                setProposedSchedule(response.data.data.schedule)
-            } else if (response.data.intent === "schedule_modified") {
-                toast.success("Schedule updated successfully")
+            if (responseData.intent === "schedule_generated") {
+                const rawSchedule = responseData.data?.schedule;
+                const today = format(new Date(), "yyyy-MM-dd");
+                let items: ScheduleItem[] = [];
+
+                // Helper to normalize item data
+                const normalizeItem = (d: any) => {
+                    let start = d.startTime;
+                    let end = d.endTime;
+
+                    // If time is just HH:mm, append to today's date
+                    if (start && !start.includes("T") && start.includes(":")) {
+                        const startDate = new Date(`${today}T${start}:00`);
+                        if (!isNaN(startDate.getTime())) {
+                            start = startDate.toISOString();
+                        } else {
+                            start = `${today}T${start}:00`; // Fallback
+                        }
+                    }
+                    
+                    if (end && !end.includes("T") && end.includes(":")) {
+                        const endDate = new Date(`${today}T${end}:00`);
+                        if (!isNaN(endDate.getTime())) {
+                            end = endDate.toISOString();
+                        } else {
+                            end = `${today}T${end}:00`; // Fallback
+                        }
+                    }
+
+                    return {
+                        id: d.id || generateUUID(),
+                        title: d.title,
+                        description: d.description,
+                        startTime: start,
+                        endTime: end,
+                        type: d.type || "work",
+                        isCompleted: false
+                    } as ScheduleItem;
+                };
+
+                if (Array.isArray(rawSchedule)) {
+                    items = rawSchedule.map(normalizeItem);
+                } else if (rawSchedule?.items && Array.isArray(rawSchedule.items)) {
+                    items = rawSchedule.items.map(normalizeItem);
+                }
+
+                if (items.length > 0) {
+                    setProposedSchedule({
+                        date: rawSchedule?.date || today,
+                        items: items
+                    })
+                    toast.info("Schedule generated. Please review and save.")
+                } else {
+                    console.warn("No items found in schedule generation response", rawSchedule);
+                }
+            } else if (responseData.intent === "schedule_modified") {
+                toast.info("Schedule proposal updated. Please review and save.")
                 // If the backend returns the updated schedule, we could show it or just notify
-                if (response.data.data?.schedule) {
-                    setProposedSchedule(response.data.data.schedule)
+                if (responseData.data?.schedule) {
+                     setProposedSchedule({
+                        ...responseData.data.schedule,
+                        items: responseData.data.schedule.items || []
+                     })
+                } else if (responseData.data?.modifications) {
+                    // Convert modifications to preview format
+                    const today = format(new Date(), "yyyy-MM-dd");
+                    const items = responseData.data.modifications
+                        .filter((m: any) => m.action === "create" || m.action === "update")
+                        .map((m: any) => {
+                            const d = m.data;
+                            // Handle simple time format HH:mm
+                            let start = d.startTime;
+                            let end = d.endTime;
+
+                            // If time is just HH:mm, append to today's date
+                            if (start && !start.includes("T") && start.includes(":")) {
+                                const startDate = new Date(`${today}T${start}:00`);
+                                if (!isNaN(startDate.getTime())) {
+                                    start = startDate.toISOString();
+                                } else {
+                                    start = `${today}T${start}:00`; // Fallback
+                                }
+                            }
+                            
+                            if (end && !end.includes("T") && end.includes(":")) {
+                                const endDate = new Date(`${today}T${end}:00`);
+                                if (!isNaN(endDate.getTime())) {
+                                    end = endDate.toISOString();
+                                } else {
+                                    end = `${today}T${end}:00`; // Fallback
+                                }
+                            }
+
+                            return {
+                                id: d.id || generateUUID(),
+                                title: d.title,
+                                description: d.description,
+                                startTime: start,
+                                endTime: end,
+                                type: d.type || "work",
+                                isCompleted: false
+                            } as ScheduleItem;
+                        });
+
+                    if (items.length > 0) {
+                        setProposedSchedule({
+                            date: today,
+                            items: items
+                        });
+                    }
                 }
             }
 
@@ -110,7 +244,7 @@ export default function Assistant() {
         try {
             await scheduleApi.batchCreate({
                 date: proposedSchedule.date,
-                items: proposedSchedule.items
+                items: proposedSchedule.items || []
             })
             toast.success("Schedule saved successfully!")
             setProposedSchedule(null)
@@ -197,7 +331,7 @@ export default function Assistant() {
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="text-xs space-y-2">
-                                            {proposedSchedule.items.map((item, idx) => (
+                                            {proposedSchedule.items?.map((item, idx) => (
                                                 <div key={idx} className="flex items-center gap-2 bg-background/50 p-2 rounded border border-border/50">
                                                     <Badge variant="outline" className="shrink-0">
                                                         {format(new Date(item.startTime), "HH:mm")} - {format(new Date(item.endTime), "HH:mm")}
