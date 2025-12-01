@@ -139,7 +139,14 @@ const options = {
             message: { type: "string" },
             intent: {
               type: "string",
-              enum: ["chat", "schedule_generated", "schedule_modified", "clarification_needed"],
+              enum: [
+                "chat",
+                "schedule_generated",
+                "schedule_modified",
+                "goal_proposed",
+                "memory_proposed",
+                "clarification_needed",
+              ],
             },
             data: { type: "object" },
           },

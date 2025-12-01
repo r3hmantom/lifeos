@@ -79,20 +79,37 @@ exports.chat = async (req, res) => {
     const text = response.text();
 
     // Parse JSON response
-    const jsonString = text
+    const cleanText = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
     
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(jsonString);
+      parsedResponse = JSON.parse(cleanText);
     } catch (e) {
-      // Fallback if AI doesn't return JSON
-      parsedResponse = {
-        message: text,
-        intent: "chat",
-      };
+      // If direct parse fails, try to extract JSON object from the text
+      const firstOpen = cleanText.indexOf("{");
+      const lastClose = cleanText.lastIndexOf("}");
+      
+      if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+        const potentialJson = cleanText.substring(firstOpen, lastClose + 1);
+        try {
+          parsedResponse = JSON.parse(potentialJson);
+        } catch (e2) {
+          // If extraction also fails, fallback to chat
+          parsedResponse = {
+            message: text,
+            intent: "chat",
+          };
+        }
+      } else {
+        // Fallback if no JSON found
+        parsedResponse = {
+          message: text,
+          intent: "chat",
+        };
+      }
     }
 
     const setTime = (timeStr) => {
@@ -157,45 +174,10 @@ exports.chat = async (req, res) => {
       };
     }
 
-    // Handle Schedule Generation
-    if (
-      parsedResponse.intent === "schedule_generated" &&
-      parsedResponse.data?.schedule
-    ) {
-      await prisma.$transaction(async (tx) => {
-        const items = Array.isArray(parsedResponse.data.schedule)
-          ? parsedResponse.data.schedule
-          : [];
-
-        for (const item of items) {
-          await tx.scheduleItem.create({
-            data: {
-              title: item.title,
-              description: item.description,
-              startTime: setTime(item.startTime),
-              endTime: setTime(item.endTime),
-              type: item.type || "manual",
-              userId: req.userId,
-              isCompleted: false,
-            },
-          });
-        }
-      });
-
-      // Fetch updated schedule to return
-      const updatedSchedule = await prisma.scheduleItem.findMany({
-        where: {
-          userId: req.userId,
-          startTime: { gte: startOfDay, lte: endOfDay },
-        },
-        orderBy: { startTime: "asc" },
-      });
-
-      parsedResponse.data.schedule = {
-        date: context.date,
-        items: updatedSchedule,
-      };
-    }
+    // Note: For "schedule_generated", "goal_proposed", and "memory_proposed",
+    // we do NOT save to the database automatically.
+    // We return the proposed data to the frontend for user confirmation/modification.
+    // The frontend will then call the respective creation endpoints.
 
     return res.json(parsedResponse);
   } catch (err) {

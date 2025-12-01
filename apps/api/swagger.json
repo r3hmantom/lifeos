@@ -251,6 +251,8 @@
               "chat",
               "schedule_generated",
               "schedule_modified",
+              "goal_proposed",
+              "memory_proposed",
               "clarification_needed"
             ]
           },

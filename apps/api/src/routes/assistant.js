@@ -15,6 +15,15 @@ const authMiddleware = require("../middlewares/auth");
  * /assistant/chat:
  *   post:
  *     summary: Chat with the AI assistant for schedule planning
+ *     description: |
+ *       Interact with the AI to plan schedules, add goals, or create memories.
+ *       
+ *       Supported Intents:
+ *       - `chat`: Standard conversation
+ *       - `schedule_generated`: Returns a proposed schedule (does not save automatically)
+ *       - `schedule_modified`: Modifies existing schedule items (saves automatically)
+ *       - `goal_proposed`: Returns a proposed goal object (does not save automatically)
+ *       - `memory_proposed`: Returns a proposed memory object (does not save automatically)
  *     tags: [Assistant]
  *     security:
  *       - bearerAuth: []
