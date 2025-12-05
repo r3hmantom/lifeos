@@ -2,9 +2,7 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { format } from "date-fns"
-import { Plus, Calendar as CalendarIcon, Tag, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Plus, Trash2 } from "lucide-react"
 import { memoriesApi } from "@/lib/api"
 import type { Memory } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -26,22 +24,14 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 
 const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().min(1, "Description is required"),
-    date: z.date(),
-    tags: z.string(), // We'll parse this comma-separated string
+    // We'll parse this comma-separated string
 })
 
 export default function Memories() {
@@ -53,7 +43,6 @@ export default function Memories() {
         defaultValues: {
             title: "",
             description: "",
-            tags: "",
         },
     })
 
@@ -72,13 +61,10 @@ export default function Memories() {
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            const tagsArray = values.tags.split(",").map((t) => t.trim()).filter(Boolean)
 
             await memoriesApi.create({
                 title: values.title,
                 description: values.description,
-                date: values.date.toISOString(),
-                tags: tagsArray,
             })
 
             toast.success("Memory created successfully")
@@ -156,60 +142,8 @@ export default function Memories() {
                                         </FormItem>
                                     )}
                                 />
-                                <FormField
-                                    control={form.control}
-                                    name="date"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Date</FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button
-                                                            variant={"outline"}
-                                                            className={cn(
-                                                                "pl-3 text-left font-normal",
-                                                                !field.value && "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {field.value ? (
-                                                                format(field.value, "PPP")
-                                                            ) : (
-                                                                <span>Pick a date</span>
-                                                            )}
-                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={field.value}
-                                                        onSelect={field.onChange}
-                                                        disabled={(date) =>
-                                                            date > new Date()
-                                                        }
-                                                        initialFocus
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="tags"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Tags (comma separated)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., sports, achievement, 2023" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+
+
                                 <Button type="submit" className="w-full">Save Memory</Button>
                             </form>
                         </Form>
@@ -229,9 +163,6 @@ export default function Memories() {
                                     />
                                     <span>{memory.title}</span>
                                 </div>
-                                <span className="text-xs font-normal text-muted-foreground">
-                                    {format(new Date(memory.date), "PPP")}
-                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -239,14 +170,6 @@ export default function Memories() {
                                 {memory.description}
                             </p>
                             <div className="flex items-center justify-between">
-                                <div className="flex flex-wrap gap-2">
-                                    {memory.tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                                            <Tag className="h-3 w-3" />
-                                            {tag}
-                                        </Badge>
-                                    ))}
-                                </div>
                                 <Button
                                     variant="ghost"
                                     size="icon"
