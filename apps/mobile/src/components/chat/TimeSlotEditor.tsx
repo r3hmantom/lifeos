@@ -10,6 +10,8 @@ import {
     View,
     ScrollView,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../../constants/colors';
@@ -245,7 +247,11 @@ export default function TimeSlotEditor({
             transparent={true}
             onRequestClose={onClose}
         >
-            <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={styles.modalOverlay}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            >
                 <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
                     <View style={[styles.modalHeader]}>
                         <Text style={styles.modalTitle}>Edit Time Slot</Text>
@@ -260,6 +266,7 @@ export default function TimeSlotEditor({
                             contentContainerStyle={styles.modalBodyContent}
                             showsVerticalScrollIndicator={true}
                             keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="interactive"
                         >
                             <View style={styles.formSection}>
                                 <Text style={styles.sectionLabel}>Title</Text>
@@ -426,7 +433,7 @@ export default function TimeSlotEditor({
                         </TouchableOpacity>
                     </View>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }
@@ -471,7 +478,7 @@ const styles = StyleSheet.create({
     },
     modalBodyContent: {
         padding: 20,
-        paddingBottom: 40,
+        paddingBottom: 100,
         flexGrow: 1,
     },
     formSection: {

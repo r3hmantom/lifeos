@@ -45,6 +45,7 @@ export default function ChatScreen() {
     const [rejectedScheduleIndices, setRejectedScheduleIndices] = useState<Set<number>>(new Set());
     const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
     const [showTimeEditor, setShowTimeEditor] = useState(false);
+    const shouldAutoScrollRef = useRef(true);
 
     useEffect(() => {
         if (chatId) {
@@ -68,6 +69,8 @@ export default function ChatScreen() {
                 content: msg.content || '',
             }));
             setMessages(loadedMessages);
+            // Enable auto-scroll when loading messages initially
+            shouldAutoScrollRef.current = true;
             
             // Check for schedule proposals in loaded messages - handle both array and object formats
             // Also check which items are already saved
@@ -161,6 +164,8 @@ export default function ChatScreen() {
         setMessages(newMessages);
         setInputText('');
         setIsLoading(true);
+        // Enable auto-scroll for new messages
+        shouldAutoScrollRef.current = true;
 
         try {
             // Prepare context
@@ -211,6 +216,8 @@ export default function ChatScreen() {
             };
 
             setMessages(prev => [...prev, assistantMessage]);
+            // Enable auto-scroll for new messages
+            shouldAutoScrollRef.current = true;
 
             // Handle schedule proposals - matching web app behavior
             if (responseData.intent === 'schedule_generated' && responseData.data?.schedule) {
@@ -308,6 +315,9 @@ export default function ChatScreen() {
     const handleAcceptAllSchedule = async () => {
         if (!pendingScheduleProposal) return;
 
+        // Disable auto-scroll when accepting items
+        shouldAutoScrollRef.current = false;
+
         try {
             const today = new Date().toISOString().split('T')[0];
             const targetDate = new Date(today);
@@ -371,7 +381,8 @@ export default function ChatScreen() {
             refreshInsights();
             refreshSchedule();
             
-            // Add confirmation message
+            // Add confirmation message (but don't auto-scroll)
+            shouldAutoScrollRef.current = false;
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: "Great! I've added all the schedule items to your calendar."
@@ -391,6 +402,8 @@ export default function ChatScreen() {
         setProposalMessageIndex(-1);
         setAcceptedScheduleIndices(new Set());
         setRejectedScheduleIndices(new Set());
+        // Disable auto-scroll when rejecting
+        shouldAutoScrollRef.current = false;
         setMessages(prev => [...prev, {
             role: 'user',
             content: "I'd like to reject this schedule proposal."
@@ -403,6 +416,9 @@ export default function ChatScreen() {
 
     const handleAcceptItem = async (index: number) => {
         if (!pendingScheduleProposal) return;
+
+        // Disable auto-scroll when accepting individual items
+        shouldAutoScrollRef.current = false;
 
         try {
             const item = pendingScheduleProposal[index];
@@ -464,6 +480,9 @@ export default function ChatScreen() {
 
     const handleRejectItem = (index: number) => {
         if (!pendingScheduleProposal) return;
+        
+        // Disable auto-scroll when rejecting individual items
+        shouldAutoScrollRef.current = false;
         
         // Mark item as rejected
         setRejectedScheduleIndices(prev => new Set(prev).add(index));
@@ -596,7 +615,13 @@ export default function ChatScreen() {
                     ref={scrollViewRef}
                     style={styles.messagesList}
                     contentContainerStyle={styles.messagesContent}
-                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                    onContentSizeChange={() => {
+                        // Only auto-scroll when we explicitly want to (new messages)
+                        // This prevents scrolling when accepting/rejecting items
+                        if (shouldAutoScrollRef.current) {
+                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                        }
+                    }}
                     keyboardShouldPersistTaps="handled"
                 >
                     {messages.map((msg, index) => renderMessage(msg, index))}
