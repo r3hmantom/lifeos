@@ -1,10 +1,14 @@
-import { ApiService, ChatMessage } from '@/src/services/api';
+import { ApiService, ChatMessage, ChatResponse, ProposedScheduleItem } from '@/src/services/api';
+import ScheduleProposal from '@/src/components/chat/ScheduleProposal';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
-import React, { useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -17,52 +21,302 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
 
+
 export default function ChatScreen() {
     const navigation = useNavigation();
+    const router = useRouter();
+    const params = useLocalSearchParams<{ chatId?: string }>();
     const insets = useSafeAreaInsets();
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'assistant', content: "Hi! I'm your LifeOS assistant. I can help you plan your schedule, manage tasks, or answer questions about your goals." }
-    ]);
+    
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [chatId, setChatId] = useState<string | undefined>(params.chatId);
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
+    const [pendingScheduleProposal, setPendingScheduleProposal] = useState<ProposedScheduleItem[] | null>(null);
+    const [proposalMessageIndex, setProposalMessageIndex] = useState<number>(-1);
+    const [acceptedScheduleIndices, setAcceptedScheduleIndices] = useState<Set<number>>(new Set());
+    const [rejectedScheduleIndices, setRejectedScheduleIndices] = useState<Set<number>>(new Set());
+
+    useEffect(() => {
+        if (chatId) {
+            loadChatMessages();
+        } else {
+            // New chat - show welcome message
+            setMessages([
+                { role: 'assistant', content: "Hi! I'm your LifeOS assistant. I can help you plan your schedule, manage tasks, or answer questions about your goals." }
+            ]);
+        }
+    }, [chatId]);
+
+    const loadChatMessages = async () => {
+        if (!chatId) return;
+        
+        setLoadingMessages(true);
+        try {
+            const response = await ApiService.assistant.getChatMessages(chatId);
+            const loadedMessages = response.messages.map(msg => ({
+                ...msg,
+                content: msg.content || '',
+            }));
+            setMessages(loadedMessages);
+            
+            // Check for schedule proposals in loaded messages
+            loadedMessages.forEach((msg, index) => {
+                if (msg.role === 'assistant' && msg.metadata?.intent === 'schedule_generated' && msg.metadata?.data?.schedule) {
+                    setPendingScheduleProposal(msg.metadata.data.schedule);
+                    setProposalMessageIndex(index);
+                    setAcceptedScheduleIndices(new Set());
+                    setRejectedScheduleIndices(new Set());
+                }
+            });
+        } catch (error) {
+            console.error("Failed to load chat messages", error);
+            Alert.alert("Error", "Failed to load chat messages");
+        } finally {
+            setLoadingMessages(false);
+        }
+    };
 
     const sendMessage = async () => {
         if (!inputText.trim()) return;
 
         const userMessage: ChatMessage = { role: 'user', content: inputText.trim() };
-        setMessages(prev => [...prev, userMessage]);
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
         setInputText('');
         setIsLoading(true);
 
         try {
-            // Prepare context (could be enhanced with actual selected IDs)
+            // Prepare context
             const context = {
                 date: new Date().toISOString().split('T')[0],
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             };
 
             const response = await ApiService.assistant.chat({
-                messages: [...messages, userMessage],
+                messages: chatId ? [userMessage] : newMessages, // If continuing chat, only send new message
+                chatId,
                 context
             });
 
-            const assistantMessage: ChatMessage = { role: 'assistant', content: response.message };
+            // Update chatId if this is a new chat
+            if (response.chatId && !chatId) {
+                setChatId(response.chatId);
+            }
+
+            // Create assistant message with metadata
+            const assistantMessage: ChatMessage = {
+                role: 'assistant',
+                content: response.message,
+                metadata: {
+                    intent: response.intent,
+                    data: response.data,
+                }
+            };
+
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Handle intents
-            if (response.intent === 'schedule_generated' || response.intent === 'schedule_modified') {
-                // Optionally notify user or refresh schedule if we were on dashboard
-                // For now, the message usually confirms this.
+            // Handle schedule proposals
+            if (response.intent === 'schedule_generated' && response.data?.schedule) {
+                setPendingScheduleProposal(response.data.schedule);
+                setProposalMessageIndex(messages.length); // Index after adding assistant message
+                setAcceptedScheduleIndices(new Set());
+                setRejectedScheduleIndices(new Set());
+            }
+
+            // Handle schedule modifications (auto-saved by backend)
+            if (response.intent === 'schedule_modified') {
+                // Optionally refresh dashboard schedule
+                // Could emit an event or use context to refresh
             }
 
         } catch (error) {
             console.error("Chat error", error);
-            setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error processing your request." }]);
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: "Sorry, I encountered an error processing your request. Please try again."
+            }]);
         } finally {
             setIsLoading(false);
         }
     };
+
+    const handleAcceptAllSchedule = async () => {
+        if (!pendingScheduleProposal) return;
+
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const targetDate = new Date(today);
+
+            // Mark all as accepted first
+            const allIndices = new Set(pendingScheduleProposal.map((_, i) => i));
+            setAcceptedScheduleIndices(allIndices);
+            setRejectedScheduleIndices(new Set());
+
+            // Create all schedule items
+            for (const item of pendingScheduleProposal) {
+                const [startHours, startMinutes] = item.startTime.split(':').map(Number);
+                const [endHours, endMinutes] = item.endTime.split(':').map(Number);
+                
+                const startTime = new Date(targetDate);
+                startTime.setHours(startHours, startMinutes, 0, 0);
+                
+                const endTime = new Date(targetDate);
+                endTime.setHours(endHours, endMinutes, 0, 0);
+
+                await ApiService.schedule.create({
+                    title: item.title,
+                    description: item.description,
+                    startTime: startTime.toISOString(),
+                    endTime: endTime.toISOString(),
+                    type: item.type,
+                    isCompleted: false,
+                });
+            }
+
+            setPendingScheduleProposal(null);
+            setProposalMessageIndex(-1);
+            setAcceptedScheduleIndices(new Set());
+            setRejectedScheduleIndices(new Set());
+            
+            // Add confirmation message
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: "Great! I've added all the schedule items to your calendar."
+            }]);
+
+            Alert.alert("Success", "Schedule items have been added to your calendar!");
+        } catch (error) {
+            console.error("Failed to accept schedule", error);
+            Alert.alert("Error", "Failed to add schedule items. Please try again.");
+            // Reset on error
+            setAcceptedScheduleIndices(new Set());
+        }
+    };
+
+    const handleRejectAllSchedule = () => {
+        setPendingScheduleProposal(null);
+        setProposalMessageIndex(-1);
+        setAcceptedScheduleIndices(new Set());
+        setRejectedScheduleIndices(new Set());
+        setMessages(prev => [...prev, {
+            role: 'user',
+            content: "I'd like to reject this schedule proposal."
+        }]);
+    };
+
+    const handleAcceptItem = async (index: number) => {
+        if (!pendingScheduleProposal) return;
+
+        try {
+            const item = pendingScheduleProposal[index];
+            const today = new Date().toISOString().split('T')[0];
+            const targetDate = new Date(today);
+
+            const [startHours, startMinutes] = item.startTime.split(':').map(Number);
+            const [endHours, endMinutes] = item.endTime.split(':').map(Number);
+            
+            const startTime = new Date(targetDate);
+            startTime.setHours(startHours, startMinutes, 0, 0);
+            
+            const endTime = new Date(targetDate);
+            endTime.setHours(endHours, endMinutes, 0, 0);
+
+            await ApiService.schedule.create({
+                title: item.title,
+                description: item.description,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                type: item.type,
+                isCompleted: false,
+            });
+
+            // Mark item as accepted
+            setAcceptedScheduleIndices(prev => new Set(prev).add(index));
+            setRejectedScheduleIndices(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(index);
+                return newSet;
+            });
+        } catch (error) {
+            console.error("Failed to accept schedule item", error);
+            Alert.alert("Error", "Failed to add schedule item. Please try again.");
+        }
+    };
+
+    const handleRejectItem = (index: number) => {
+        if (!pendingScheduleProposal) return;
+        
+        // Mark item as rejected
+        setRejectedScheduleIndices(prev => new Set(prev).add(index));
+        setAcceptedScheduleIndices(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+        });
+    };
+
+    const startNewChat = () => {
+        setChatId(undefined);
+        setMessages([
+            { role: 'assistant', content: "Hi! I'm your LifeOS assistant. I can help you plan your schedule, manage tasks, or answer questions about your goals." }
+        ]);
+        setPendingScheduleProposal(null);
+        setProposalMessageIndex(-1);
+        setAcceptedScheduleIndices(new Set());
+        setRejectedScheduleIndices(new Set());
+        setShowHistory(false);
+    };
+
+    const renderMessage = (msg: ChatMessage, index: number) => {
+        const isScheduleProposal = 
+            msg.role === 'assistant' &&
+            msg.metadata?.intent === 'schedule_generated' &&
+            msg.metadata?.data?.schedule &&
+            index === proposalMessageIndex &&
+            pendingScheduleProposal;
+
+        return (
+            <View key={msg.id || index}>
+                <View
+                    style={[
+                        styles.messageBubble,
+                        msg.role === 'user' ? styles.userBubble : styles.assistantBubble
+                    ]}
+                >
+                    <Text style={[
+                        styles.messageText,
+                        msg.role === 'user' ? styles.userText : styles.assistantText
+                    ]}>
+                        {msg.content}
+                    </Text>
+                </View>
+                {isScheduleProposal && pendingScheduleProposal && (
+                    <ScheduleProposal
+                        items={pendingScheduleProposal}
+                        acceptedIndices={acceptedScheduleIndices}
+                        rejectedIndices={rejectedScheduleIndices}
+                        onAcceptAll={handleAcceptAllSchedule}
+                        onRejectAll={handleRejectAllSchedule}
+                        onAcceptItem={handleAcceptItem}
+                        onRejectItem={handleRejectItem}
+                    />
+                )}
+            </View>
+        );
+    };
+
+    if (loadingMessages) {
+        return (
+            <View style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.loadingText}>Loading chat...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -71,7 +325,20 @@ export default function ChatScreen() {
                     <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>AI Assistant</Text>
-                <View style={{ width: 24 }} />
+                <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        onPress={() => setShowHistory(true)}
+                        style={styles.historyButton}
+                    >
+                        <Ionicons name="time-outline" size={24} color={Colors.text.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={startNewChat}
+                        style={styles.newChatButton}
+                    >
+                        <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView
@@ -80,22 +347,7 @@ export default function ChatScreen() {
                 contentContainerStyle={styles.messagesContent}
                 onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
-                {messages.map((msg, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.messageBubble,
-                            msg.role === 'user' ? styles.userBubble : styles.assistantBubble
-                        ]}
-                    >
-                        <Text style={[
-                            styles.messageText,
-                            msg.role === 'user' ? styles.userText : styles.assistantText
-                        ]}>
-                            {msg.content}
-                        </Text>
-                    </View>
-                ))}
+                {messages.map((msg, index) => renderMessage(msg, index))}
                 {isLoading && (
                     <View style={styles.loadingBubble}>
                         <ActivityIndicator size="small" color={Colors.gray[500]} />
@@ -115,6 +367,7 @@ export default function ChatScreen() {
                         onChangeText={setInputText}
                         multiline
                         maxLength={500}
+                        onSubmitEditing={sendMessage}
                     />
                     <TouchableOpacity
                         style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
@@ -125,7 +378,194 @@ export default function ChatScreen() {
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* Chat History Modal */}
+            <Modal
+                visible={showHistory}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowHistory(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
+                            <Text style={styles.modalTitle}>Chat History</Text>
+                            <TouchableOpacity
+                                onPress={() => setShowHistory(false)}
+                                style={styles.closeButton}
+                            >
+                                <Ionicons name="close" size={24} color={Colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.historyContainer}>
+                            <ChatHistoryList
+                                onSelectChat={(id) => {
+                                    setChatId(id || undefined);
+                                    setShowHistory(false);
+                                }}
+                                currentChatId={chatId}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
+    );
+}
+
+// Helper function to format chat date
+function formatChatDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) {
+        return 'Just now';
+    } else if (diffMins < 60) {
+        return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+    }
+}
+
+// Chat History List Component
+function ChatHistoryList({ onSelectChat, currentChatId }: { onSelectChat: (chatId: string) => void; currentChatId?: string }) {
+    const [chats, setChats] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadChats();
+    }, []);
+
+    const loadChats = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const chatList = await ApiService.assistant.getChats(50, 0);
+            setChats(chatList);
+            console.log("chatList", chatList);
+        } catch (error: any) {
+            console.error("Failed to load chats", error);
+            // Check if it's a 404 or route not found error
+            const errorMessage = error?.message || 'Unknown error';
+            if (errorMessage.includes('Cannot GET') || errorMessage.includes('404')) {
+                setError("Chat history feature is not available. Please ensure the backend is running and the route is registered.");
+            } else {
+                setError("Failed to load chat history. Please try again later.");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteChat = async (chatId: string) => {
+        Alert.alert(
+            "Delete Chat",
+            "Are you sure you want to delete this chat?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await ApiService.assistant.deleteChat(chatId);
+                            loadChats();
+                            if (currentChatId === chatId) {
+                                onSelectChat(''); // Clear current chat - will be converted to undefined
+                            }
+                        } catch (error) {
+                            Alert.alert("Error", "Failed to delete chat");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    if (loading) {
+        return (
+            <View style={styles.historyLoading}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={styles.historyError}>
+                <Ionicons name="alert-circle-outline" size={48} color={Colors.error} />
+                <Text style={styles.historyErrorText}>{error}</Text>
+                <TouchableOpacity
+                    style={styles.retryButton}
+                    onPress={loadChats}
+                >
+                    <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    if (chats.length === 0) {
+        return (
+            <View style={styles.historyEmpty}>
+                <Ionicons name="chatbubbles-outline" size={48} color={Colors.gray[400]} />
+                <Text style={styles.historyEmptyText}>No chat history</Text>
+            </View>
+        );
+    }
+
+    return (
+        <ScrollView 
+            style={styles.historyList}
+            contentContainerStyle={styles.historyListContent}
+            showsVerticalScrollIndicator={true}
+        >
+            {chats.map((chat) => (
+                <TouchableOpacity
+                    key={chat.id}
+                    style={[
+                        styles.historyItem,
+                        currentChatId === chat.id && styles.historyItemActive
+                    ]}
+                    onPress={() => onSelectChat(chat.id)}
+                >
+                    <View style={styles.historyItemContent}>
+                        <Text style={styles.historyItemTitle} numberOfLines={1}>
+                            {chat.title || "New Chat"}
+                        </Text>
+                        <View style={styles.historyItemMeta}>
+                            <Text style={styles.historyItemDate}>
+                                {formatChatDate(chat.updatedAt)}
+                            </Text>
+                            {chat.messageCount !== undefined && chat.messageCount > 0 && (
+                                <View style={styles.messageCountBadge}>
+                                    <Text style={styles.messageCountText}>
+                                        {chat.messageCount} {chat.messageCount === 1 ? 'message' : 'messages'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => handleDeleteChat(chat.id)}
+                        style={styles.deleteButton}
+                    >
+                        <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
     );
 }
 
@@ -150,6 +590,17 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: Fonts.primary.bold,
         color: Colors.text.primary,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    historyButton: {
+        padding: 4,
+    },
+    newChatButton: {
+        padding: 4,
     },
     messagesList: {
         flex: 1,
@@ -198,6 +649,12 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 4,
         marginBottom: 8,
     },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        fontFamily: Fonts.primary.regular,
+        color: Colors.text.secondary,
+    },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'flex-end',
@@ -213,7 +670,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 10,
-        paddingTop: 10, // for multiline
+        paddingTop: 10,
         maxHeight: 100,
         fontFamily: Fonts.primary.regular,
         fontSize: 16,
@@ -228,5 +685,141 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: Colors.gray[300],
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: Colors.background.primary,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        height: '85%',
+        flexDirection: 'column',
+        overflow: 'hidden',
+    },
+    historyContainer: {
+        flex: 1,
+        overflow: 'hidden',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.gray[200],
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontFamily: Fonts.primary.bold,
+        color: Colors.text.primary,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    // History list styles
+    historyList: {
+        flex: 1,
+    },
+    historyListContent: {
+        paddingBottom: 20,
+        paddingHorizontal: 0,
+    },
+    historyLoading: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+        minHeight: 200,
+    },
+    historyEmpty: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+        minHeight: 200,
+    },
+    historyEmptyText: {
+        marginTop: 16,
+        fontSize: 16,
+        fontFamily: Fonts.primary.regular,
+        color: Colors.text.secondary,
+    },
+    historyItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.gray[100],
+    },
+    historyItemActive: {
+        backgroundColor: Colors.gray[50],
+    },
+    historyItemContent: {
+        flex: 1,
+    },
+    historyItemTitle: {
+        fontSize: 16,
+        fontFamily: Fonts.primary.semiBold,
+        color: Colors.text.primary,
+        marginBottom: 4,
+    },
+    historyItemMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 4,
+    },
+    historyItemDate: {
+        fontSize: 12,
+        fontFamily: Fonts.primary.regular,
+        color: Colors.text.secondary,
+    },
+    messageCountBadge: {
+        backgroundColor: Colors.gray[200],
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+    },
+    messageCountText: {
+        fontSize: 11,
+        fontFamily: Fonts.primary.medium,
+        color: Colors.text.secondary,
+    },
+    deleteButton: {
+        padding: 8,
+        marginLeft: 8,
+    },
+    historyError: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+        paddingHorizontal: 20,
+        minHeight: 200,
+    },
+    historyErrorText: {
+        marginTop: 16,
+        fontSize: 14,
+        fontFamily: Fonts.primary.regular,
+        color: Colors.text.secondary,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: Colors.primary,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: 'white',
+        fontSize: 14,
+        fontFamily: Fonts.primary.semiBold,
     },
 });

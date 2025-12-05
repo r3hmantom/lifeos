@@ -61,12 +61,16 @@ export interface UserSettings {
 }
 
 export interface ChatMessage {
+  id?: string;
   role: "user" | "assistant" | "system";
   content: string;
+  metadata?: any;
+  createdAt?: string;
 }
 
 export interface ChatRequest {
   messages: ChatMessage[];
+  chatId?: string;
   context?: {
     date?: string;
     timezone?: string;
@@ -81,8 +85,38 @@ export interface ChatResponse {
     | "chat"
     | "schedule_generated"
     | "schedule_modified"
+    | "goal_proposed"
+    | "memory_proposed"
     | "clarification_needed";
-  data?: any;
+  data?: {
+    schedule?: Array<{
+      title: string;
+      description?: string;
+      startTime: string; // HH:mm format
+      endTime: string; // HH:mm format
+      type: string;
+    }>;
+    modifications?: any[];
+    goal?: any;
+    memory?: any;
+  };
+  chatId?: string;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount?: number;
+}
+
+export interface ProposedScheduleItem {
+  title: string;
+  description?: string;
+  startTime: string; // HH:mm format
+  endTime: string; // HH:mm format
+  type: string;
 }
 
 export interface InsightMetrics {
@@ -92,7 +126,8 @@ export interface InsightMetrics {
   totalTasks: number;
 }
 
-const BASE_URL = "https://lifeos-backend-production.up.railway.app/api/v1";
+// const BASE_URL = "https://lifeos-backend-production.up.railway.app/api/v1";
+const BASE_URL = "http://192.168.1.12:8080/api/v1";
 
 async function request<T>(
   endpoint: string,
@@ -109,6 +144,7 @@ async function request<T>(
   };
 
   try {
+    console.log("request", `${BASE_URL}${endpoint}`);
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -231,6 +267,38 @@ export const ApiService = {
       request<ChatResponse>("/assistant/chat", {
         method: "POST",
         body: JSON.stringify(data),
+      }),
+    getChats: (limit?: number, offset?: number) => {
+      const params = new URLSearchParams();
+      if (limit) params.append("limit", limit.toString());
+      if (offset) params.append("offset", offset.toString());
+      const queryString = params.toString();
+      return request<{ chats: Chat[] }>(
+        `/assistant/chats${queryString ? `?${queryString}` : ""}`
+      ).then((res) => res.chats || []);
+    },
+    getChatMessages: (chatId: string, limit?: number, offset?: number) => {
+      const params = new URLSearchParams();
+      if (limit) params.append("limit", limit.toString());
+      if (offset) params.append("offset", offset.toString());
+      const queryString = params.toString();
+      return request<{ chatId: string; messages: ChatMessage[] }>(
+        `/assistant/chats/${chatId}${queryString ? `?${queryString}` : ""}`
+      );
+    },
+    createChat: (title?: string) =>
+      request<Chat>("/assistant/chats", {
+        method: "POST",
+        body: JSON.stringify({ title }),
+      }),
+    updateChat: (chatId: string, title: string) =>
+      request<Chat>(`/assistant/chats/${chatId}`, {
+        method: "PUT",
+        body: JSON.stringify({ title }),
+      }),
+    deleteChat: (chatId: string) =>
+      request<{ message: string }>(`/assistant/chats/${chatId}`, {
+        method: "DELETE",
       }),
   },
 
