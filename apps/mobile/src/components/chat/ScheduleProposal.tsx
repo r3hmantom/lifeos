@@ -2,6 +2,7 @@ import { ProposedScheduleItem } from '@/src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+    ActivityIndicator,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -14,6 +15,7 @@ interface ScheduleProposalProps {
     items: ProposedScheduleItem[];
     acceptedIndices?: Set<number>;
     rejectedIndices?: Set<number>;
+    loadingIndices?: Set<number>;
     onAcceptAll: () => void;
     onRejectAll: () => void;
     onAcceptItem: (index: number) => void;
@@ -25,6 +27,7 @@ export default function ScheduleProposal({
     items,
     acceptedIndices = new Set(),
     rejectedIndices = new Set(),
+    loadingIndices = new Set(),
     onAcceptAll,
     onRejectAll,
     onAcceptItem,
@@ -94,6 +97,7 @@ export default function ScheduleProposal({
                 {items.map((item, index) => {
                     const isAccepted = acceptedIndices.has(index);
                     const isRejected = rejectedIndices.has(index);
+                    const isLoading = loadingIndices.has(index);
                     const typeColors = getTypeColor(item.type);
 
                     return (
@@ -109,11 +113,14 @@ export default function ScheduleProposal({
                             <View style={styles.itemContent}>
                                 <View style={styles.itemHeader}>
                                     <Text style={styles.itemTitle}>{item.title}</Text>
-                                    {isAccepted && (
+                                    {isAccepted && !isLoading && (
                                         <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
                                     )}
-                                    {isRejected && (
+                                    {isRejected && !isLoading && (
                                         <Ionicons name="close-circle" size={20} color={Colors.error} />
+                                    )}
+                                    {isLoading && (
+                                        <ActivityIndicator size="small" color={Colors.primary} />
                                     )}
                                 </View>
                                 {item.description && (
@@ -132,7 +139,7 @@ export default function ScheduleProposal({
                                         </Text>
                                     </View>
                                 </View>
-                                {!isAccepted && !isRejected && (
+                                {!isAccepted && !isRejected && !isLoading && (
                                     <View style={styles.itemActions}>
                                         {onEditItem && (
                                             <TouchableOpacity

@@ -44,6 +44,7 @@ export default function ChatScreen() {
     const [proposalMessageIndex, setProposalMessageIndex] = useState<number>(-1);
     const [acceptedScheduleIndices, setAcceptedScheduleIndices] = useState<Set<number>>(new Set());
     const [rejectedScheduleIndices, setRejectedScheduleIndices] = useState<Set<number>>(new Set());
+    const [loadingScheduleIndices, setLoadingScheduleIndices] = useState<Set<number>>(new Set());
     const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
     const [showTimeEditor, setShowTimeEditor] = useState(false);
     const shouldAutoScrollRef = useRef(true);
@@ -426,6 +427,8 @@ export default function ChatScreen() {
         hapticsSelection();
         // Disable auto-scroll when accepting individual items
         shouldAutoScrollRef.current = false;
+        
+        setLoadingScheduleIndices(prev => new Set(prev).add(index));
 
         try {
             const item = pendingScheduleProposal[index];
@@ -483,27 +486,46 @@ export default function ChatScreen() {
         } catch (error) {
             console.error("Failed to accept schedule item", error);
             Alert.alert("Error", "Failed to add schedule item. Please try again.");
+        } finally {
+            setLoadingScheduleIndices(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(index);
+                return newSet;
+            });
         }
     };
 
-    const handleRejectItem = (index: number) => {
+    const handleRejectItem = async (index: number) => {
         if (!pendingScheduleProposal) return;
         
         hapticsLight();
         // Disable auto-scroll when rejecting individual items
         shouldAutoScrollRef.current = false;
         
-        // Mark item as rejected
-        setRejectedScheduleIndices(prev => new Set(prev).add(index));
-        setAcceptedScheduleIndices(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(index);
-            return newSet;
-        });
-        
-        // Refresh insights and schedule when time slot is rejected
-        refreshInsights();
-        refreshSchedule();
+        setLoadingScheduleIndices(prev => new Set(prev).add(index));
+
+        try {
+            // Mark item as rejected
+            setRejectedScheduleIndices(prev => new Set(prev).add(index));
+            setAcceptedScheduleIndices(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(index);
+                return newSet;
+            });
+            
+            // Refresh insights and schedule when time slot is rejected
+            refreshInsights();
+            refreshSchedule();
+            
+            // Small delay to show spinner (since operation is otherwise instant)
+            await new Promise(resolve => setTimeout(resolve, 300));
+        } finally {
+            setLoadingScheduleIndices(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(index);
+                return newSet;
+            });
+        }
     };
 
     const handleEditItem = (index: number) => {
@@ -574,6 +596,7 @@ export default function ChatScreen() {
                         items={pendingScheduleProposal}
                         acceptedIndices={acceptedScheduleIndices}
                         rejectedIndices={rejectedScheduleIndices}
+                        loadingIndices={loadingScheduleIndices}
                         onAcceptAll={handleAcceptAllSchedule}
                         onRejectAll={handleRejectAllSchedule}
                         onAcceptItem={handleAcceptItem}

@@ -98,6 +98,34 @@ export default function DashboardScreen() {
         }
     };
 
+    const handleClearSchedule = () => {
+        Alert.alert(
+            "Clear Today's Schedule",
+            "Are you sure you want to delete all schedule items for today? This cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete All",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setLoadingSchedule(true);
+                            const today = new Date().toISOString().split('T')[0];
+                            await ApiService.schedule.clearDaily(today);
+                            hapticsSuccess();
+                            await loadSchedule();
+                            refreshSchedule();
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to clear schedule");
+                            console.error(e);
+                            setLoadingSchedule(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleGenerateSchedule = async () => {
         setIsGenerating(true);
         try {
@@ -287,7 +315,14 @@ export default function DashboardScreen() {
 
                 {/* Middle Section: Timeline */}
                 <View style={styles.sectionContainer}>
-                    <Text style={styles.sectionHeader}>Timeline</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 24 }}>
+                        <Text style={styles.sectionHeader}>Timeline</Text>
+                        {scheduleItems.length > 0 && (
+                            <TouchableOpacity onPress={handleClearSchedule} style={{ padding: 8 }}>
+                                <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     {loadingSchedule ? (
                         <ActivityIndicator size="large" color={Colors.primary} />
                     ) : scheduleItems.length === 0 && !hasCreatedMemory ? (

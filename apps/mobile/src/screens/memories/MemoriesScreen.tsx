@@ -43,6 +43,7 @@ export default function MemoriesScreen() {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [isFormVisible, setIsFormVisible] = useState(false);
+    const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
 
     useEffect(() => {
         loadMemories();
@@ -66,7 +67,27 @@ export default function MemoriesScreen() {
 
     const toggleForm = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setIsFormVisible(!isFormVisible);
+        if (isFormVisible) {
+            // Closing form
+            setIsFormVisible(false);
+            setEditingMemoryId(null);
+            setTitle('');
+            setDescription('');
+        } else {
+            // Opening form for new entry
+            setIsFormVisible(true);
+            setEditingMemoryId(null);
+            setTitle('');
+            setDescription('');
+        }
+    };
+
+    const startEditing = (memory: Memory) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setEditingMemoryId(memory.id);
+        setTitle(memory.title);
+        setDescription(memory.description);
+        setIsFormVisible(true);
     };
 
     const toggleActive = async (id: string) => {
@@ -119,41 +140,70 @@ export default function MemoriesScreen() {
         );
     };
 
-    const handleAddMemory = async () => {
+    const handleSaveMemory = async () => {
         if (!title.trim() || !description.trim()) return;
 
         setSubmitting(true);
 
         try {
-            const newMemory = await ApiService.memories.create({
-                title: title.trim(),
-                description: description.trim(),
-                date: new Date().toISOString(),
-            });
+            if (editingMemoryId) {
+                // Update existing memory
+                const updatedMemory = await ApiService.memories.update(editingMemoryId, {
+                    title: title.trim(),
+                    description: description.trim(),
+                });
 
-            hapticsSuccess();
-            await checkState(); // Update context to reflect user has created memory
+                hapticsSuccess();
+                // Update local state
+                setMemories(current =>
+                    current.map(m => (m.id === editingMemoryId ? updatedMemory : m))
+                );
 
-            // Refresh insights and schedule when new memory is added
-            refreshInsights();
-            refreshSchedule();
+                refreshInsights();
+                refreshSchedule();
 
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setMemories([newMemory, ...memories]);
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                
+                // Reset form
+                setTitle('');
+                setDescription('');
+                setIsFormVisible(false);
+                setEditingMemoryId(null);
+                Keyboard.dismiss();
+                
+                Alert.alert("Success", "Memory updated successfully");
+            } else {
+                // Create new memory
+                const newMemory = await ApiService.memories.create({
+                    title: title.trim(),
+                    description: description.trim(),
+                    date: new Date().toISOString(),
+                });
 
-            // Reset form
-            setTitle('');
-            setDescription('');
-            setIsFormVisible(false);
-            Keyboard.dismiss();
+                hapticsSuccess();
+                await checkState(); // Update context to reflect user has created memory
 
-            // If this was the first memory, alert the user
-            Alert.alert("Memory Added", "Great! Your fixed commitments are stored.", [
-                { text: "Continue", onPress: () => navigation.navigate('Dashboard') } // Dashboard will handle next redirect
-            ]);
+                // Refresh insights and schedule when new memory is added
+                refreshInsights();
+                refreshSchedule();
+
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setMemories([newMemory, ...memories]);
+
+                // Reset form
+                setTitle('');
+                setDescription('');
+                setIsFormVisible(false);
+                Keyboard.dismiss();
+
+                // If this was the first memory, alert the user
+                Alert.alert("Memory Added", "Great! Your fixed commitments are stored.", [
+                    { text: "Continue", onPress: () => navigation.navigate('Dashboard') } // Dashboard will handle next redirect
+                ]);
+            }
 
         } catch (e) {
-            Alert.alert("Error", "Failed to save memory");
+            Alert.alert("Error", `Failed to ${editingMemoryId ? 'update' : 'save'} memory`);
         } finally {
             setSubmitting(false);
         }
@@ -203,7 +253,13 @@ export default function MemoriesScreen() {
                 {isExpanded && (
                     <View style={styles.cardBody}>
                         <Text style={styles.cardDescription}>{item.description}</Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+                            <TouchableOpacity
+                                onPress={() => startEditing(item)}
+                                style={{ padding: 8 }}
+                            >
+                                <Ionicons name="create-outline" size={20} color={Colors.primary} />
+                            </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => handleDelete(item.id)}
                                 style={{ padding: 8 }}
@@ -232,7 +288,7 @@ export default function MemoriesScreen() {
 
                 {isFormVisible && (
                     <View style={styles.formContainer}>
-                        <Text style={styles.formHeader}>New Memory</Text>
+                        <Text style={styles.formHeader}>{editingMemoryId ? 'Edit Memory' : 'New Memory'}</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Title"
@@ -248,11 +304,11 @@ export default function MemoriesScreen() {
                             onChangeText={setDescription}
                             multiline
                         />
-                        <TouchableOpacity style={styles.submitButton} onPress={handleAddMemory} disabled={submitting}>
+                        <TouchableOpacity style={styles.submitButton} onPress={handleSaveMemory} disabled={submitting}>
                             {submitting ? (
                                 <ActivityIndicator color={Colors.white} />
                             ) : (
-                                <Text style={styles.submitButtonText}>Save Memory</Text>
+                                <Text style={styles.submitButtonText}>{editingMemoryId ? 'Update Memory' : 'Save Memory'}</Text>
                             )}
                         </TouchableOpacity>
                     </View>
