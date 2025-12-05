@@ -18,6 +18,7 @@ interface ScheduleProposalProps {
     onRejectAll: () => void;
     onAcceptItem: (index: number) => void;
     onRejectItem: (index: number) => void;
+    onEditItem?: (index: number) => void;
 }
 
 export default function ScheduleProposal({
@@ -28,6 +29,7 @@ export default function ScheduleProposal({
     onRejectAll,
     onAcceptItem,
     onRejectItem,
+    onEditItem,
 }: ScheduleProposalProps) {
     const handleAcceptItem = (index: number) => {
         onAcceptItem(index);
@@ -132,6 +134,15 @@ export default function ScheduleProposal({
                                 </View>
                                 {!isAccepted && !isRejected && (
                                     <View style={styles.itemActions}>
+                                        {onEditItem && (
+                                            <TouchableOpacity
+                                                style={[styles.itemActionButton, styles.editButton]}
+                                                onPress={() => onEditItem(index)}
+                                            >
+                                                <Ionicons name="create-outline" size={16} color="white" />
+                                                <Text style={styles.itemActionText}>Edit</Text>
+                                            </TouchableOpacity>
+                                        )}
                                         <TouchableOpacity
                                             style={[styles.itemActionButton, styles.acceptButton]}
                                             onPress={() => handleAcceptItem(index)}
@@ -299,6 +310,9 @@ const styles = StyleSheet.create({
     },
     rejectButton: {
         backgroundColor: Colors.error,
+    },
+    editButton: {
+        backgroundColor: Colors.primary,
     },
     itemActionText: {
         color: 'white',

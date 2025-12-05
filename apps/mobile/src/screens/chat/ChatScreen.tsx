@@ -1,5 +1,6 @@
 import { ApiService, ChatMessage, ChatResponse, ProposedScheduleItem } from '@/src/services/api';
 import ScheduleProposal from '@/src/components/chat/ScheduleProposal';
+import TimeSlotEditor from '@/src/components/chat/TimeSlotEditor';
 import { useApp } from '@/src/context/AppContext';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
@@ -42,6 +43,8 @@ export default function ChatScreen() {
     const [proposalMessageIndex, setProposalMessageIndex] = useState<number>(-1);
     const [acceptedScheduleIndices, setAcceptedScheduleIndices] = useState<Set<number>>(new Set());
     const [rejectedScheduleIndices, setRejectedScheduleIndices] = useState<Set<number>>(new Set());
+    const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+    const [showTimeEditor, setShowTimeEditor] = useState(false);
 
     useEffect(() => {
         if (chatId) {
@@ -475,6 +478,32 @@ export default function ChatScreen() {
         refreshSchedule();
     };
 
+    const handleEditItem = (index: number) => {
+        setEditingItemIndex(index);
+        setShowTimeEditor(true);
+    };
+
+    const handleSaveEditedItem = (index: number, editedItem: ProposedScheduleItem) => {
+        if (!pendingScheduleProposal) return;
+        
+        // Update the item in the proposal
+        const updatedProposal = [...pendingScheduleProposal];
+        updatedProposal[index] = editedItem;
+        setPendingScheduleProposal(updatedProposal);
+        
+        // Clear any acceptance/rejection status for this item since it was modified
+        setAcceptedScheduleIndices(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+        });
+        setRejectedScheduleIndices(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+        });
+    };
+
     const startNewChat = () => {
         setChatId(undefined);
         setMessages([
@@ -519,6 +548,7 @@ export default function ChatScreen() {
                         onRejectAll={handleRejectAllSchedule}
                         onAcceptItem={handleAcceptItem}
                         onRejectItem={handleRejectItem}
+                        onEditItem={handleEditItem}
                     />
                 )}
             </View>
@@ -632,6 +662,20 @@ export default function ChatScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Time Slot Editor Modal */}
+            {pendingScheduleProposal && editingItemIndex !== null && (
+                <TimeSlotEditor
+                    visible={showTimeEditor}
+                    item={pendingScheduleProposal[editingItemIndex]}
+                    itemIndex={editingItemIndex}
+                    onSave={handleSaveEditedItem}
+                    onClose={() => {
+                        setShowTimeEditor(false);
+                        setEditingItemIndex(null);
+                    }}
+                />
+            )}
         </View>
     );
 }
