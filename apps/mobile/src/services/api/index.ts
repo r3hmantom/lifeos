@@ -260,6 +260,11 @@ export const ApiService = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+    batchCreate: (data: { date: string; items: Omit<ScheduleItem, "id">[] }) =>
+      request<{ message: string; count: number }>("/schedule/batch", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
   },
 
   assistant: {

@@ -2,10 +2,10 @@ import { useApp } from '@/src/context/AppContext';
 import { ApiService, ScheduleItem } from '@/src/services/api';
 import { hapticsSuccess } from '@/src/utils/haptics';
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -55,7 +55,16 @@ export default function DashboardScreen() {
         checkFlow();
     }, [hasCreatedMemory, hasCreatedGoal, navigation]);
 
-    // Fetch Schedule
+    // Fetch Schedule when screen comes into focus or when schedule is generated
+    useFocusEffect(
+        useCallback(() => {
+            if (isScheduleGenerated) {
+                loadSchedule();
+            }
+        }, [isScheduleGenerated])
+    );
+
+    // Also fetch when isScheduleGenerated changes
     useEffect(() => {
         if (isScheduleGenerated) {
             loadSchedule();

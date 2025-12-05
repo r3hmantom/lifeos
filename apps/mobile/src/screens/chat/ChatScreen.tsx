@@ -1,5 +1,6 @@
 import { ApiService, ChatMessage, ChatResponse, ProposedScheduleItem } from '@/src/services/api';
 import ScheduleProposal from '@/src/components/chat/ScheduleProposal';
+import { useApp } from '@/src/context/AppContext';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -27,6 +28,7 @@ export default function ChatScreen() {
     const router = useRouter();
     const params = useLocalSearchParams<{ chatId?: string }>();
     const insets = useSafeAreaInsets();
+    const { checkState } = useApp();
     
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
@@ -63,15 +65,82 @@ export default function ChatScreen() {
             }));
             setMessages(loadedMessages);
             
-            // Check for schedule proposals in loaded messages
-            loadedMessages.forEach((msg, index) => {
+            // Check for schedule proposals in loaded messages - handle both array and object formats
+            // Also check which items are already saved
+            for (let index = 0; index < loadedMessages.length; index++) {
+                const msg = loadedMessages[index];
                 if (msg.role === 'assistant' && msg.metadata?.intent === 'schedule_generated' && msg.metadata?.data?.schedule) {
-                    setPendingScheduleProposal(msg.metadata.data.schedule);
-                    setProposalMessageIndex(index);
-                    setAcceptedScheduleIndices(new Set());
-                    setRejectedScheduleIndices(new Set());
+                    const rawSchedule = msg.metadata.data.schedule;
+                    let items: ProposedScheduleItem[] = [];
+
+                    // Helper to normalize item data
+                    const normalizeItem = (d: any): ProposedScheduleItem => {
+                        return {
+                            title: d.title,
+                            description: d.description,
+                            startTime: d.startTime, // Keep as-is (HH:mm or ISO)
+                            endTime: d.endTime, // Keep as-is (HH:mm or ISO)
+                            type: d.type || 'work',
+                        };
+                    };
+
+                    // Handle both array format and object with items property
+                    if (Array.isArray(rawSchedule)) {
+                        items = rawSchedule.map(normalizeItem);
+                    } else if (rawSchedule?.items && Array.isArray(rawSchedule.items)) {
+                        items = rawSchedule.items.map(normalizeItem);
+                    }
+
+                    if (items.length > 0) {
+                        // Check which items are already saved in the backend
+                        const today = new Date().toISOString().split('T')[0];
+                        const acceptedIndices = new Set<number>();
+                        
+                        try {
+                            const savedSchedule = await ApiService.schedule.getDaily(today);
+                            const savedItems = savedSchedule.items || [];
+                            
+                            // Match proposed items with saved items
+                            items.forEach((proposedItem, itemIndex) => {
+                                // Helper to normalize time for comparison
+                                const normalizeTime = (timeStr: string): string => {
+                                    if (timeStr.includes('T')) {
+                                        // ISO format - extract HH:mm
+                                        const date = new Date(timeStr);
+                                        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                                    }
+                                    return timeStr; // Already HH:mm
+                                };
+                                
+                                const proposedStart = normalizeTime(proposedItem.startTime);
+                                const proposedEnd = normalizeTime(proposedItem.endTime);
+                                
+                                // Check if there's a matching saved item
+                                const isSaved = savedItems.some(savedItem => {
+                                    const savedStart = normalizeTime(savedItem.startTime);
+                                    const savedEnd = normalizeTime(savedItem.endTime);
+                                    
+                                    // Match by title and time (within 1 minute tolerance)
+                                    return savedItem.title === proposedItem.title &&
+                                           savedStart === proposedStart &&
+                                           savedEnd === proposedEnd;
+                                });
+                                
+                                if (isSaved) {
+                                    acceptedIndices.add(itemIndex);
+                                }
+                            });
+                        } catch (error) {
+                            console.error("Failed to check saved schedule items", error);
+                        }
+                        
+                        setPendingScheduleProposal(items);
+                        setProposalMessageIndex(index);
+                        setAcceptedScheduleIndices(acceptedIndices);
+                        setRejectedScheduleIndices(new Set());
+                    }
                 }
-            });
+            }
         } catch (error) {
             console.error("Failed to load chat messages", error);
             Alert.alert("Error", "Failed to load chat messages");
@@ -107,24 +176,74 @@ export default function ChatScreen() {
                 setChatId(response.chatId);
             }
 
+            // Parse response - check for embedded JSON in markdown code blocks (matching web app)
+            let responseData = response;
+            let displayMessage = response.message;
+
+            // Check for embedded JSON in markdown code blocks
+            const jsonMatch = response.message.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+                try {
+                    const parsed = JSON.parse(jsonMatch[1]);
+                    // If the parsed JSON has an intent, use it as the source of truth for data
+                    if (parsed.intent && parsed.intent !== 'chat') {
+                        responseData = parsed;
+                        // Clean up the message to remove the JSON block for display purposes
+                        displayMessage = response.message.replace(/```(?:json)?\s*[\s\S]*?\s*```/, '').trim();
+                    }
+                } catch (e) {
+                    console.error('Failed to parse embedded JSON', e);
+                }
+            }
+
             // Create assistant message with metadata
             const assistantMessage: ChatMessage = {
                 role: 'assistant',
-                content: response.message,
+                content: displayMessage,
                 metadata: {
-                    intent: response.intent,
-                    data: response.data,
+                    intent: responseData.intent,
+                    data: responseData.data,
                 }
             };
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Handle schedule proposals
-            if (response.intent === 'schedule_generated' && response.data?.schedule) {
-                setPendingScheduleProposal(response.data.schedule);
-                setProposalMessageIndex(messages.length); // Index after adding assistant message
-                setAcceptedScheduleIndices(new Set());
-                setRejectedScheduleIndices(new Set());
+            // Handle schedule proposals - matching web app behavior
+            if (responseData.intent === 'schedule_generated' && responseData.data?.schedule) {
+                const rawSchedule = responseData.data.schedule;
+                const today = new Date().toISOString().split('T')[0];
+                let items: ProposedScheduleItem[] = [];
+
+                // Helper to normalize item data (matching web app logic)
+                const normalizeItem = (d: any): ProposedScheduleItem => {
+                    let start = d.startTime;
+                    let end = d.endTime;
+
+                    // If time is already in ISO format, keep it
+                    // If time is just HH:mm, we'll handle it when creating schedule items
+                    // For now, keep the HH:mm format for display in ScheduleProposal component
+                    return {
+                        title: d.title,
+                        description: d.description,
+                        startTime: start, // Keep as HH:mm for display
+                        endTime: end, // Keep as HH:mm for display
+                        type: d.type || 'work',
+                    };
+                };
+
+                // Handle both array format and object with items property
+                if (Array.isArray(rawSchedule)) {
+                    items = rawSchedule.map(normalizeItem);
+                } else if (rawSchedule?.items && Array.isArray(rawSchedule.items)) {
+                    items = rawSchedule.items.map(normalizeItem);
+                }
+
+                if (items.length > 0) {
+                    setPendingScheduleProposal(items);
+                    setProposalMessageIndex(messages.length); // Index after adding assistant message
+                    setAcceptedScheduleIndices(new Set());
+                    setRejectedScheduleIndices(new Set());
+                }
             }
 
             // Handle schedule modifications (auto-saved by backend)
@@ -156,31 +275,55 @@ export default function ChatScreen() {
             setAcceptedScheduleIndices(allIndices);
             setRejectedScheduleIndices(new Set());
 
-            // Create all schedule items
-            for (const item of pendingScheduleProposal) {
-                const [startHours, startMinutes] = item.startTime.split(':').map(Number);
-                const [endHours, endMinutes] = item.endTime.split(':').map(Number);
-                
-                const startTime = new Date(targetDate);
-                startTime.setHours(startHours, startMinutes, 0, 0);
-                
-                const endTime = new Date(targetDate);
-                endTime.setHours(endHours, endMinutes, 0, 0);
+            // Convert schedule items to proper format for batch create
+            const itemsToSave = pendingScheduleProposal.map(item => {
+                // Handle time format - could be HH:mm or ISO string
+                let startTime: Date;
+                let endTime: Date;
 
-                await ApiService.schedule.create({
+                if (item.startTime.includes('T')) {
+                    // Already ISO format
+                    startTime = new Date(item.startTime);
+                } else {
+                    // HH:mm format - convert to ISO
+                    const [startHours, startMinutes] = item.startTime.split(':').map(Number);
+                    startTime = new Date(targetDate);
+                    startTime.setHours(startHours, startMinutes, 0, 0);
+                }
+
+                if (item.endTime.includes('T')) {
+                    // Already ISO format
+                    endTime = new Date(item.endTime);
+                } else {
+                    // HH:mm format - convert to ISO
+                    const [endHours, endMinutes] = item.endTime.split(':').map(Number);
+                    endTime = new Date(targetDate);
+                    endTime.setHours(endHours, endMinutes, 0, 0);
+                }
+
+                return {
                     title: item.title,
                     description: item.description,
                     startTime: startTime.toISOString(),
                     endTime: endTime.toISOString(),
                     type: item.type,
                     isCompleted: false,
-                });
-            }
+                };
+            });
+
+            // Use batch create for better performance (matching web app)
+            await ApiService.schedule.batchCreate({
+                date: today,
+                items: itemsToSave,
+            });
 
             setPendingScheduleProposal(null);
             setProposalMessageIndex(-1);
             setAcceptedScheduleIndices(new Set());
             setRejectedScheduleIndices(new Set());
+            
+            // Refresh schedule data
+            await checkState();
             
             // Add confirmation message
             setMessages(prev => [...prev, {
@@ -216,14 +359,29 @@ export default function ChatScreen() {
             const today = new Date().toISOString().split('T')[0];
             const targetDate = new Date(today);
 
-            const [startHours, startMinutes] = item.startTime.split(':').map(Number);
-            const [endHours, endMinutes] = item.endTime.split(':').map(Number);
-            
-            const startTime = new Date(targetDate);
-            startTime.setHours(startHours, startMinutes, 0, 0);
-            
-            const endTime = new Date(targetDate);
-            endTime.setHours(endHours, endMinutes, 0, 0);
+            // Handle time format - could be HH:mm or ISO string
+            let startTime: Date;
+            let endTime: Date;
+
+            if (item.startTime.includes('T')) {
+                // Already ISO format
+                startTime = new Date(item.startTime);
+            } else {
+                // HH:mm format - convert to ISO
+                const [startHours, startMinutes] = item.startTime.split(':').map(Number);
+                startTime = new Date(targetDate);
+                startTime.setHours(startHours, startMinutes, 0, 0);
+            }
+
+            if (item.endTime.includes('T')) {
+                // Already ISO format
+                endTime = new Date(item.endTime);
+            } else {
+                // HH:mm format - convert to ISO
+                const [endHours, endMinutes] = item.endTime.split(':').map(Number);
+                endTime = new Date(targetDate);
+                endTime.setHours(endHours, endMinutes, 0, 0);
+            }
 
             await ApiService.schedule.create({
                 title: item.title,
@@ -233,6 +391,9 @@ export default function ChatScreen() {
                 type: item.type,
                 isCompleted: false,
             });
+
+            // Refresh schedule data
+            await checkState();
 
             // Mark item as accepted
             setAcceptedScheduleIndices(prev => new Set(prev).add(index));

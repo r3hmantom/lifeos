@@ -70,22 +70,22 @@ export default function ScheduleProposal({
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Proposed Schedule</Text>
-                <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.acceptAllButton]}
-                        onPress={handleAcceptAll}
-                    >
-                        <Ionicons name="checkmark-circle" size={16} color="white" />
-                        <Text style={styles.actionButtonText}>Accept All</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.rejectAllButton]}
-                        onPress={handleRejectAll}
-                    >
-                        <Ionicons name="close-circle" size={16} color="white" />
-                        <Text style={styles.actionButtonText}>Reject All</Text>
-                    </TouchableOpacity>
-                </View>
+            </View>
+            <View style={styles.headerActions}>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.acceptAllButton]}
+                    onPress={handleAcceptAll}
+                >
+                    <Ionicons name="checkmark-circle" size={16} color="white" />
+                    <Text style={styles.actionButtonText}>Accept All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.actionButton, styles.rejectAllButton]}
+                    onPress={handleRejectAll}
+                >
+                    <Ionicons name="close-circle" size={16} color="white" />
+                    <Text style={styles.actionButtonText}>Reject All</Text>
+                </TouchableOpacity>
             </View>
 
             <View style={styles.itemsContainer}>
@@ -170,10 +170,8 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         padding: 16,
+        paddingBottom: 12,
         borderBottomWidth: 1,
         borderBottomColor: Colors.gray[200],
     },
@@ -185,6 +183,10 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: 'row',
         gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.gray[200],
     },
     actionButton: {
         flexDirection: 'row',
