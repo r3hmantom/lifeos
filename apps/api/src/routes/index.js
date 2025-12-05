@@ -8,6 +8,7 @@ const scheduleRoutes = require("./schedule");
 const settingsRoutes = require("./settings");
 const assistantRoutes = require("./assistant");
 const insightsRoutes = require("./insights");
+const dashboardRoutes = require("./dashboard");
 
 router.use("/auth", authRoutes);
 router.use("/memories", memoryRoutes);
@@ -16,5 +17,6 @@ router.use("/schedule", scheduleRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/assistant", assistantRoutes);
 router.use("/insights", insightsRoutes);
+router.use("/dashboard", dashboardRoutes);
 
 module.exports = router;

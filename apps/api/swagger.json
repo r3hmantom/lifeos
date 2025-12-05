@@ -186,6 +186,11 @@
           "content"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Message ID (only present when retrieved from database)"
+          },
           "role": {
             "type": "string",
             "enum": [
@@ -196,6 +201,16 @@
           },
           "content": {
             "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata (e.g., parsed response with intent)",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Message creation timestamp (only present when retrieved from database)"
           }
         }
       },
@@ -210,6 +225,11 @@
             "items": {
               "$ref": "#/components/schemas/ChatMessage"
             }
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional chat ID to continue an existing conversation"
           },
           "context": {
             "type": "object",
@@ -258,6 +278,36 @@
           },
           "data": {
             "type": "object"
+          },
+          "chatId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chat ID for the conversation (new or existing)"
+          }
+        }
+      },
+      "Chat": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "messageCount": {
+            "type": "integer",
+            "description": "Number of messages in the chat"
           }
         }
       },
@@ -346,6 +396,7 @@
     "/assistant/chat": {
       "post": {
         "summary": "Chat with the AI assistant for schedule planning",
+        "description": "Interact with the AI to plan schedules, add goals, or create memories.\nIf chatId is provided, continues an existing conversation. Otherwise, creates a new chat session.\n\nSupported Intents:\n- `chat`: Standard conversation\n- `schedule_generated`: Returns a proposed schedule (does not save automatically)\n- `schedule_modified`: Modifies existing schedule items (saves automatically)\n- `goal_proposed`: Returns a proposed goal object (does not save automatically)\n- `memory_proposed`: Returns a proposed memory object (does not save automatically)\n",
         "tags": [
           "Assistant"
         ],
@@ -366,7 +417,7 @@
         },
         "responses": {
           "200": {
-            "description": "Assistant response",
+            "description": "Assistant response with chatId",
             "content": {
               "application/json": {
                 "schema": {
@@ -374,6 +425,280 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Chat not found (when chatId is provided but doesn't exist)"
+          }
+        }
+      }
+    },
+    "/assistant/chats": {
+      "get": {
+        "summary": "Get all chat conversations for the authenticated user",
+        "description": "Returns a list of all chat conversations, ordered by most recently updated",
+        "tags": [
+          "Assistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Maximum number of chats to return"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of chats to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of chats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chats": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Chat"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new chat conversation",
+        "description": "Creates a new empty chat conversation",
+        "tags": [
+          "Assistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Optional title for the chat"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created chat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Chat"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assistant/chats/{chatId}": {
+      "get": {
+        "summary": "Get messages for a specific chat",
+        "description": "Returns all messages in a chat conversation",
+        "tags": [
+          "Assistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Chat ID"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of messages to return"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Number of messages to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chatId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChatMessage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update chat title",
+        "description": "Updates the title of a chat conversation",
+        "tags": [
+          "Assistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Chat ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "New title for the chat"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated chat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Chat"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Title is required"
+          },
+          "404": {
+            "description": "Chat not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a chat conversation",
+        "description": "Permanently deletes a chat conversation and all its messages",
+        "tags": [
+          "Assistant"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chatId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Chat ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Chat deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Chat not found"
           }
         }
       }

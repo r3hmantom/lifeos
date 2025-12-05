@@ -20,8 +20,6 @@ exports.createMemory = async (req, res) => {
       data: {
         title,
         description,
-        tags,
-        date: new Date(date),
         userId: req.userId,
       },
     });
@@ -42,8 +40,6 @@ exports.updateMemory = async (req, res) => {
       data: {
         title,
         description,
-        tags,
-        date: date ? new Date(date) : undefined,
         isActive,
       },
     });

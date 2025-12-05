@@ -20,14 +20,13 @@ model User {
   goals         Goal[]
   scheduleItems ScheduleItem[]
   settings      UserSettings?
+  chats         Chat[]
 }
 
 model Memory {
   id          String   @id @default(uuid())
   title       String
   description String
-  tags        String[]
-  date        DateTime
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -75,4 +74,32 @@ model UserSettings {
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
+}
+
+model Chat {
+  id        String       @id @default(uuid())
+  title     String?      // Optional title for the conversation
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  userId String
+  user   User         @relation(fields: [userId], references: [id])
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  role      String   // user | assistant | system
+  content   String   @db.Text
+  metadata  Json?    // Store additional data like intent, parsed response, etc.
+  createdAt DateTime @default(now())
+
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@index([chatId, createdAt])
 }

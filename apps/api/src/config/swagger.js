@@ -101,11 +101,26 @@ const options = {
           type: "object",
           required: ["role", "content"],
           properties: {
+            id: {
+              type: "string",
+              format: "uuid",
+              description: "Message ID (only present when retrieved from database)",
+            },
             role: {
               type: "string",
               enum: ["user", "assistant", "system"],
             },
             content: { type: "string" },
+            metadata: {
+              type: "object",
+              description: "Additional metadata (e.g., parsed response with intent)",
+              nullable: true,
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "Message creation timestamp (only present when retrieved from database)",
+            },
           },
         },
         ChatRequest: {
@@ -115,6 +130,11 @@ const options = {
             messages: {
               type: "array",
               items: { $ref: "#/components/schemas/ChatMessage" },
+            },
+            chatId: {
+              type: "string",
+              format: "uuid",
+              description: "Optional chat ID to continue an existing conversation",
             },
             context: {
               type: "object",
@@ -149,6 +169,24 @@ const options = {
               ],
             },
             data: { type: "object" },
+            chatId: {
+              type: "string",
+              format: "uuid",
+              description: "Chat ID for the conversation (new or existing)",
+            },
+          },
+        },
+        Chat: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            title: { type: "string", nullable: true },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+            messageCount: {
+              type: "integer",
+              description: "Number of messages in the chat",
+            },
           },
         },
         BatchScheduleRequest: {
