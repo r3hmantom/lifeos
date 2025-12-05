@@ -22,6 +22,7 @@ import Colors from "../../constants/colors";
 import Fonts from "../../constants/fonts";
 
 const { width } = Dimensions.get("window");
+const HOUR_HEIGHT = 100;
 
 export default function DashboardScreen() {
     const navigation = useNavigation<any>();
@@ -225,8 +226,8 @@ export default function DashboardScreen() {
                                     styles.eventCard,
                                     {
                                         backgroundColor: bgColor,
-                                        top: (startMinutes / 60) * 60,
-                                        height: durationHours * 60,
+                                        top: (startMinutes / 60) * HOUR_HEIGHT,
+                                        height: durationHours * HOUR_HEIGHT,
                                     }
                                 ]}
                                 onPress={() => handleItemPress(item)}
@@ -244,7 +245,7 @@ export default function DashboardScreen() {
 
                     {/* Current Time Indicator Line */}
                     {isCurrentHour && (
-                        <View style={[styles.currentTimeLine, { top: currentTime.getMinutes() }]} >
+                        <View style={[styles.currentTimeLine, { top: (currentTime.getMinutes() / 60) * HOUR_HEIGHT }]} >
                             <View style={styles.currentTimeDot} />
                         </View>
                     )}
@@ -405,7 +406,7 @@ const styles = StyleSheet.create({
     },
     timeSlotContainer: {
         flexDirection: 'row',
-        height: 60,
+        height: HOUR_HEIGHT,
     },
     timeLabelContainer: {
         width: 50,

@@ -203,8 +203,7 @@ export default function MemoriesScreen() {
                 {isExpanded && (
                     <View style={styles.cardBody}>
                         <Text style={styles.cardDescription}>{item.description}</Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.cardDate}>{new Date(item.date).toLocaleDateString()}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
                             <TouchableOpacity
                                 onPress={() => handleDelete(item.id)}
                                 style={{ padding: 8 }}
