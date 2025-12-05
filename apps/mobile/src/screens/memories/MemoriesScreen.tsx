@@ -33,7 +33,7 @@ if (
 
 export default function MemoriesScreen() {
     const navigation = useNavigation<any>();
-    const { checkState } = useApp();
+    const { checkState, refreshInsights, refreshSchedule } = useApp();
     const [memories, setMemories] = useState<Memory[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -133,6 +133,10 @@ export default function MemoriesScreen() {
 
             hapticsSuccess();
             await checkState(); // Update context to reflect user has created memory
+
+            // Refresh insights and schedule when new memory is added
+            refreshInsights();
+            refreshSchedule();
 
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setMemories([newMemory, ...memories]);

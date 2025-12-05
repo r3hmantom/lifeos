@@ -1,15 +1,18 @@
 import { ApiService, InsightMetrics } from '@/src/services/api';
+import { useApp } from '@/src/context/AppContext';
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
 
 export default function InsightsScreen() {
+    const { insightsRefreshTrigger } = useApp();
     const [metrics, setMetrics] = useState<InsightMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
     const fetchInsights = async () => {
         try {
@@ -23,11 +26,22 @@ export default function InsightsScreen() {
         }
     };
 
+    // Fetch on first mount only
     useFocusEffect(
         useCallback(() => {
-            fetchInsights();
-        }, [])
+            if (!hasLoadedOnce) {
+                setHasLoadedOnce(true);
+                fetchInsights();
+            }
+        }, [hasLoadedOnce])
     );
+
+    // Refresh when trigger changes
+    useEffect(() => {
+        if (hasLoadedOnce && insightsRefreshTrigger > 0) {
+            fetchInsights();
+        }
+    }, [insightsRefreshTrigger, hasLoadedOnce]);
 
     const onRefresh = () => {
         setRefreshing(true);

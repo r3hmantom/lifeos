@@ -37,7 +37,7 @@ const PRIORITIES: Priority[] = ['High', 'Medium', 'Low'];
 
 export default function GoalsScreen() {
     const navigation = useNavigation<any>();
-    const { checkState } = useApp();
+    const { checkState, refreshInsights, refreshSchedule } = useApp();
     const [goals, setGoals] = useState<Goal[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -176,6 +176,10 @@ export default function GoalsScreen() {
             });
 
             await checkState(); // Update context
+
+            // Refresh insights and schedule when new goal is added
+            refreshInsights();
+            refreshSchedule();
 
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setGoals([newGoal, ...goals]);

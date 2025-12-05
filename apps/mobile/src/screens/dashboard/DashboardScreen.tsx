@@ -25,11 +25,12 @@ const { width } = Dimensions.get("window");
 export default function DashboardScreen() {
     const navigation = useNavigation<any>();
     const router = useRouter();
-    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState } = useApp();
+    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState, scheduleRefreshTrigger } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSchedule, setLoadingSchedule] = useState(false);
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
@@ -55,21 +56,30 @@ export default function DashboardScreen() {
         checkFlow();
     }, [hasCreatedMemory, hasCreatedGoal, navigation]);
 
-    // Fetch Schedule when screen comes into focus or when schedule is generated
+    // Fetch Schedule on first mount only if schedule is generated
     useFocusEffect(
         useCallback(() => {
-            if (isScheduleGenerated) {
+            if (isScheduleGenerated && !hasLoadedOnce) {
+                setHasLoadedOnce(true);
                 loadSchedule();
             }
-        }, [isScheduleGenerated])
+        }, [isScheduleGenerated, hasLoadedOnce])
     );
 
-    // Also fetch when isScheduleGenerated changes
+    // Also fetch when isScheduleGenerated changes from false to true
     useEffect(() => {
-        if (isScheduleGenerated) {
+        if (isScheduleGenerated && !hasLoadedOnce) {
+            setHasLoadedOnce(true);
             loadSchedule();
         }
-    }, [isScheduleGenerated]);
+    }, [isScheduleGenerated, hasLoadedOnce]);
+
+    // Refresh when trigger changes
+    useEffect(() => {
+        if (hasLoadedOnce && scheduleRefreshTrigger > 0 && isScheduleGenerated) {
+            loadSchedule();
+        }
+    }, [scheduleRefreshTrigger, hasLoadedOnce, isScheduleGenerated]);
 
     const loadSchedule = async () => {
         setLoadingSchedule(true);

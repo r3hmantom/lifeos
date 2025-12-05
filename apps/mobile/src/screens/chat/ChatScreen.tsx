@@ -29,7 +29,7 @@ export default function ChatScreen() {
     const router = useRouter();
     const params = useLocalSearchParams<{ chatId?: string }>();
     const insets = useSafeAreaInsets();
-    const { checkState } = useApp();
+    const { checkState, refreshInsights, refreshSchedule } = useApp();
     
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
@@ -248,9 +248,47 @@ export default function ChatScreen() {
             }
 
             // Handle schedule modifications (auto-saved by backend)
-            if (response.intent === 'schedule_modified') {
-                // Optionally refresh dashboard schedule
-                // Could emit an event or use context to refresh
+            if (responseData.intent === 'schedule_modified') {
+                // Refresh insights and schedule when schedule is modified
+                refreshInsights();
+                refreshSchedule();
+            }
+
+            // Handle goal proposals - create goal when AI proposes it
+            if (responseData.intent === 'goal_proposed' && responseData.data?.goal) {
+                try {
+                    const goalData = responseData.data.goal;
+                    await ApiService.goals.create({
+                        title: goalData.title,
+                        focus: goalData.focus || 'General',
+                        deadline: goalData.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default to 30 days
+                        priority: goalData.priority || 'Medium',
+                    });
+                    
+                    await checkState();
+                    refreshInsights();
+                    refreshSchedule();
+                } catch (error) {
+                    console.error("Failed to create goal from AI proposal", error);
+                }
+            }
+
+            // Handle memory proposals - create memory when AI proposes it
+            if (responseData.intent === 'memory_proposed' && responseData.data?.memory) {
+                try {
+                    const memoryData = responseData.data.memory;
+                    await ApiService.memories.create({
+                        title: memoryData.title,
+                        description: memoryData.description || '',
+                        date: memoryData.date || new Date().toISOString(),
+                    });
+                    
+                    await checkState();
+                    refreshInsights();
+                    refreshSchedule();
+                } catch (error) {
+                    console.error("Failed to create memory from AI proposal", error);
+                }
             }
 
         } catch (error) {
@@ -326,6 +364,10 @@ export default function ChatScreen() {
             // Refresh schedule data
             await checkState();
             
+            // Refresh insights and schedule when time slot is accepted
+            refreshInsights();
+            refreshSchedule();
+            
             // Add confirmation message
             setMessages(prev => [...prev, {
                 role: 'assistant',
@@ -350,6 +392,10 @@ export default function ChatScreen() {
             role: 'user',
             content: "I'd like to reject this schedule proposal."
         }]);
+        
+        // Refresh insights and schedule when time slot is rejected
+        refreshInsights();
+        refreshSchedule();
     };
 
     const handleAcceptItem = async (index: number) => {
@@ -396,6 +442,10 @@ export default function ChatScreen() {
             // Refresh schedule data
             await checkState();
 
+            // Refresh insights and schedule when time slot is accepted
+            refreshInsights();
+            refreshSchedule();
+
             // Mark item as accepted
             setAcceptedScheduleIndices(prev => new Set(prev).add(index));
             setRejectedScheduleIndices(prev => {
@@ -419,6 +469,10 @@ export default function ChatScreen() {
             newSet.delete(index);
             return newSet;
         });
+        
+        // Refresh insights and schedule when time slot is rejected
+        refreshInsights();
+        refreshSchedule();
     };
 
     const startNewChat = () => {

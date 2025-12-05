@@ -9,10 +9,14 @@ interface AppContextType {
   hasCreatedMemory: boolean;
   hasCreatedGoal: boolean;
   isScheduleGenerated: boolean;
+  insightsRefreshTrigger: number;
+  scheduleRefreshTrigger: number;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkState: () => Promise<void>;
+  refreshInsights: () => void;
+  refreshSchedule: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -23,6 +27,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [hasCreatedMemory, setHasCreatedMemory] = useState(false);
   const [hasCreatedGoal, setHasCreatedGoal] = useState(false);
   const [isScheduleGenerated, setIsScheduleGenerated] = useState(false);
+  const [insightsRefreshTrigger, setInsightsRefreshTrigger] = useState(0);
+  const [scheduleRefreshTrigger, setScheduleRefreshTrigger] = useState(0);
 
   const checkState = async () => {
     try {
@@ -102,6 +108,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const refreshInsights = () => {
+    setInsightsRefreshTrigger(prev => prev + 1);
+  };
+
+  const refreshSchedule = () => {
+    setScheduleRefreshTrigger(prev => prev + 1);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -111,10 +125,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         hasCreatedMemory,
         hasCreatedGoal,
         isScheduleGenerated,
+        insightsRefreshTrigger,
+        scheduleRefreshTrigger,
         login,
         register,
         logout,
-        checkState
+        checkState,
+        refreshInsights,
+        refreshSchedule
       }}
     >
       {children}
