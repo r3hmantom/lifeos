@@ -31,24 +31,6 @@ if (
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const TAG_COLORS = [
-    { bg: '#E3F2FD', text: '#1565C0' }, // Blue
-    { bg: '#F3E5F5', text: '#7B1FA2' }, // Purple
-    { bg: '#E8F5E9', text: '#2E7D32' }, // Green
-    { bg: '#FFF3E0', text: '#EF6C00' }, // Orange
-    { bg: '#FFEBEE', text: '#C62828' }, // Red
-    { bg: '#E0F2F1', text: '#00695C' }, // Teal
-];
-
-const getTagColor = (tag: string) => {
-    let hash = 0;
-    for (let i = 0; i < tag.length; i++) {
-        hash = tag.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % TAG_COLORS.length;
-    return TAG_COLORS[index];
-};
-
 export default function MemoriesScreen() {
     const navigation = useNavigation<any>();
     const { checkState } = useApp();
@@ -60,7 +42,6 @@ export default function MemoriesScreen() {
     // Form State
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [tagInput, setTagInput] = useState('');
     const [isFormVisible, setIsFormVisible] = useState(false);
 
     useEffect(() => {
@@ -142,16 +123,11 @@ export default function MemoriesScreen() {
         if (!title.trim() || !description.trim()) return;
 
         setSubmitting(true);
-        const newTags = tagInput
-            .split(',')
-            .map(tag => tag.trim())
-            .filter(tag => tag.length > 0);
 
         try {
             const newMemory = await ApiService.memories.create({
                 title: title.trim(),
                 description: description.trim(),
-                tags: newTags.length > 0 ? newTags : ['Memory'],
                 date: new Date().toISOString(),
             });
 
@@ -164,7 +140,6 @@ export default function MemoriesScreen() {
             // Reset form
             setTitle('');
             setDescription('');
-            setTagInput('');
             setIsFormVisible(false);
             Keyboard.dismiss();
 
@@ -213,16 +188,6 @@ export default function MemoriesScreen() {
 
                     <View style={styles.headerContent}>
                         <Text style={[styles.cardTitle, !item.isActive && styles.textInactive]}>{item.title}</Text>
-                        <View style={styles.tagsContainer}>
-                            {item.tags.map((tag, index) => {
-                                const colors = getTagColor(tag);
-                                return (
-                                    <View key={index} style={[styles.tag, { backgroundColor: item.isActive ? colors.bg : Colors.gray[100] }]}>
-                                        <Text style={[styles.tagText, { color: item.isActive ? colors.text : Colors.gray[500] }]}>#{tag}</Text>
-                                    </View>
-                                );
-                            })}
-                        </View>
                     </View>
                     <Ionicons
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -279,13 +244,6 @@ export default function MemoriesScreen() {
                             value={description}
                             onChangeText={setDescription}
                             multiline
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Tags (comma separated)"
-                            placeholderTextColor={Colors.gray[400]}
-                            value={tagInput}
-                            onChangeText={setTagInput}
                         />
                         <TouchableOpacity style={styles.submitButton} onPress={handleAddMemory} disabled={submitting}>
                             {submitting ? (
@@ -470,20 +428,6 @@ const styles = StyleSheet.create({
     textInactive: {
         textDecorationLine: 'line-through',
         color: Colors.text.secondary,
-    },
-    tagsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    tag: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-    },
-    tagText: {
-        fontSize: 12,
-        fontFamily: Fonts.primary.medium,
     },
     cardBody: {
         marginTop: 16,
