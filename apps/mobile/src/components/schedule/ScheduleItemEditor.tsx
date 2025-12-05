@@ -1,5 +1,6 @@
-import { ProposedScheduleItem } from '@/src/services/api';
-import { hapticsLight, hapticsMedium, hapticsSuccess, hapticsSelection } from '@/src/utils/haptics';
+import { ScheduleItem } from '@/src/services/api';
+import { ApiService } from '@/src/services/api';
+import { hapticsLight, hapticsSuccess, hapticsSelection } from '@/src/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import {
@@ -13,26 +14,27 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../../constants/colors';
 import Fonts from '../../constants/fonts';
 
-interface TimeSlotEditorProps {
+interface ScheduleItemEditorProps {
     visible: boolean;
-    item: ProposedScheduleItem | null;
-    itemIndex: number;
-    onSave: (index: number, editedItem: ProposedScheduleItem) => void;
+    item: ScheduleItem | null;
+    onSave: () => void;
     onClose: () => void;
+    onDelete?: () => void;
 }
 
-export default function TimeSlotEditor({
+export default function ScheduleItemEditor({
     visible,
     item,
-    itemIndex,
     onSave,
     onClose,
-}: TimeSlotEditorProps) {
+    onDelete,
+}: ScheduleItemEditorProps) {
     const insets = useSafeAreaInsets();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -42,6 +44,8 @@ export default function TimeSlotEditor({
     const [endHour, setEndHour] = useState('5');
     const [endMinute, setEndMinute] = useState('00');
     const [endAmPm, setEndAmPm] = useState<'AM' | 'PM'>('PM');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Convert 24-hour to 12-hour format
     const convert24To12 = (time24: string): { hour: string; minute: string; amPm: 'AM' | 'PM' } => {
@@ -108,7 +112,6 @@ export default function TimeSlotEditor({
 
     const handleHourChange = (value: string, isStart: boolean) => {
         hapticsLight();
-        // Allow empty for better UX
         if (value === '') {
             if (isStart) {
                 setStartHour('');
@@ -118,7 +121,6 @@ export default function TimeSlotEditor({
             return;
         }
 
-        // Remove non-digits
         const digits = value.replace(/\D/g, '');
         if (digits === '') {
             if (isStart) {
@@ -130,7 +132,6 @@ export default function TimeSlotEditor({
         }
 
         const num = parseInt(digits, 10);
-        // Allow 1-12 for 12-hour format
         if (num >= 1 && num <= 12) {
             if (isStart) {
                 setStartHour(num.toString());
@@ -138,7 +139,6 @@ export default function TimeSlotEditor({
                 setEndHour(num.toString());
             }
         } else if (num > 12) {
-            // Auto-correct to 12 if user types something like 13
             if (isStart) {
                 setStartHour('12');
             } else {
@@ -149,7 +149,6 @@ export default function TimeSlotEditor({
 
     const handleMinuteChange = (value: string, isStart: boolean) => {
         hapticsLight();
-        // Allow empty for better UX
         if (value === '') {
             if (isStart) {
                 setStartMinute('');
@@ -159,7 +158,6 @@ export default function TimeSlotEditor({
             return;
         }
 
-        // Remove non-digits
         const digits = value.replace(/\D/g, '');
         if (digits === '') {
             if (isStart) {
@@ -172,7 +170,6 @@ export default function TimeSlotEditor({
 
         const num = parseInt(digits, 10);
         if (num >= 0 && num <= 59) {
-            // Auto-format with leading zero for single digits
             const formatted = num.toString().padStart(2, '0');
             if (isStart) {
                 setStartMinute(formatted);
@@ -180,7 +177,6 @@ export default function TimeSlotEditor({
                 setEndMinute(formatted);
             }
         } else if (num > 59) {
-            // Auto-correct to 59 if user types something like 60
             if (isStart) {
                 setStartMinute('59');
             } else {
@@ -189,17 +185,18 @@ export default function TimeSlotEditor({
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!item) return;
 
-        hapticsMedium();
+        hapticsLight();
+
         // Validate title
         if (!title.trim()) {
             Alert.alert('Invalid Input', 'Please enter a title');
             return;
         }
 
-        // Validate times are filled and default minutes to '00' if empty
+        // Validate times are filled
         if (!startHour) {
             Alert.alert('Invalid Time', 'Please enter a valid start time');
             return;
@@ -229,18 +226,69 @@ export default function TimeSlotEditor({
             return;
         }
 
-        // Create edited item
-        const editedItem: ProposedScheduleItem = {
-            ...item,
-            title: title.trim(),
-            description: description.trim() || undefined,
-            startTime: startTime24,
-            endTime: endTime24,
-        };
+        setIsSaving(true);
+        try {
+            // Get today's date for the time
+            const today = new Date().toISOString().split('T')[0];
+            const targetDate = new Date(today);
 
-        hapticsSuccess();
-        onSave(itemIndex, editedItem);
-        onClose();
+            // Convert to ISO format
+            const [startH, startM] = startTime24.split(':').map(Number);
+            const [endH, endM] = endTime24.split(':').map(Number);
+
+            const startDateTime = new Date(targetDate);
+            startDateTime.setHours(startH, startM, 0, 0);
+
+            const endDateTime = new Date(targetDate);
+            endDateTime.setHours(endH, endM, 0, 0);
+
+            await ApiService.schedule.update(item.id, {
+                title: title.trim(),
+                description: description.trim() || undefined,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+            });
+
+            hapticsSuccess();
+            onSave();
+            onClose();
+        } catch (error) {
+            console.error("Failed to update schedule item", error);
+            Alert.alert("Error", "Failed to update schedule item. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = () => {
+        if (!item || !onDelete) return;
+
+        hapticsLight();
+        Alert.alert(
+            "Delete Schedule Item",
+            "Are you sure you want to delete this schedule item?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsDeleting(true);
+                        try {
+                            await ApiService.schedule.delete(item.id);
+                            hapticsSuccess();
+                            onDelete();
+                            onClose();
+                        } catch (error) {
+                            console.error("Failed to delete schedule item", error);
+                            Alert.alert("Error", "Failed to delete schedule item. Please try again.");
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     if (!item) return null;
@@ -259,14 +307,8 @@ export default function TimeSlotEditor({
             >
                 <View style={styles.modalContent}>
                     <View style={[styles.modalHeader]}>
-                        <Text style={styles.modalTitle}>Edit Time Slot</Text>
-                        <TouchableOpacity 
-                            onPress={() => {
-                                hapticsLight();
-                                onClose();
-                            }} 
-                            style={styles.closeButton}
-                        >
+                        <Text style={styles.modalTitle}>Edit Schedule Item</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <Ionicons name="close" size={24} color={Colors.text.primary} />
                         </TouchableOpacity>
                     </View>
@@ -441,7 +483,25 @@ export default function TimeSlotEditor({
                         </ScrollView>
                     </View>
 
-                    <View style={[styles.modalFooter, { paddingBottom: insets.bottom + 32 }]}>
+                    <View style={[styles.modalFooter, { paddingBottom: insets.bottom + 430 }]}>
+                        {onDelete && (
+                            <View style={styles.deleteButtonContainer}>
+                                <TouchableOpacity
+                                    style={styles.deleteButton}
+                                    onPress={handleDelete}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="trash-outline" size={18} color="white" />
+                                            <Text style={styles.deleteButtonText}>Delete Schedule Item</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
                         <View style={styles.actionButtonsRow}>
                             <TouchableOpacity
                                 style={[styles.footerButton, styles.cancelButton]}
@@ -455,8 +515,13 @@ export default function TimeSlotEditor({
                             <TouchableOpacity
                                 style={[styles.footerButton, styles.saveButton]}
                                 onPress={handleSave}
+                                disabled={isSaving}
                             >
-                                <Text style={styles.saveButtonText}>Save Changes</Text>
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -612,7 +677,21 @@ const styles = StyleSheet.create({
         paddingBottom: 32,
         borderTopWidth: 1,
         borderTopColor: Colors.gray[200],
+        gap: 12,
         backgroundColor: Colors.background.primary,
+    },
+    deleteButtonContainer: {
+        marginBottom: 4,
+    },
+    deleteButton: {
+        width: '100%',
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+        backgroundColor: Colors.error,
     },
     actionButtonsRow: {
         flexDirection: 'row',
@@ -637,6 +716,11 @@ const styles = StyleSheet.create({
         color: Colors.text.primary,
     },
     saveButtonText: {
+        fontSize: 16,
+        fontFamily: Fonts.primary.semiBold,
+        color: 'white',
+    },
+    deleteButtonText: {
         fontSize: 16,
         fontFamily: Fonts.primary.semiBold,
         color: 'white',

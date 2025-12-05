@@ -1,6 +1,7 @@
 import { useApp } from '@/src/context/AppContext';
 import { ApiService, ScheduleItem } from '@/src/services/api';
-import { hapticsSuccess } from '@/src/utils/haptics';
+import { hapticsSuccess, hapticsLight, hapticsMedium } from '@/src/utils/haptics';
+import ScheduleItemEditor from '@/src/components/schedule/ScheduleItemEditor';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useRouter } from "expo-router";
@@ -25,12 +26,14 @@ const { width } = Dimensions.get("window");
 export default function DashboardScreen() {
     const navigation = useNavigation<any>();
     const router = useRouter();
-    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState, scheduleRefreshTrigger } = useApp();
+    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState, scheduleRefreshTrigger, refreshSchedule } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSchedule, setLoadingSchedule] = useState(false);
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+    const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+    const [showEditor, setShowEditor] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
@@ -122,7 +125,24 @@ export default function DashboardScreen() {
     };
 
     const handleOpenChat = () => {
+        hapticsMedium();
         router.push('/chat' as any);
+    };
+
+    const handleItemPress = (item: ScheduleItem) => {
+        hapticsLight();
+        setEditingItem(item);
+        setShowEditor(true);
+    };
+
+    const handleSaveItem = async () => {
+        await loadSchedule();
+        refreshSchedule();
+    };
+
+    const handleDeleteItem = async () => {
+        await loadSchedule();
+        refreshSchedule();
     };
 
     const formattedTime = useMemo(() => {
@@ -199,7 +219,7 @@ export default function DashboardScreen() {
                         }
 
                         return (
-                            <View
+                            <TouchableOpacity
                                 key={item.id}
                                 style={[
                                     styles.eventCard,
@@ -209,6 +229,8 @@ export default function DashboardScreen() {
                                         height: durationHours * 60,
                                     }
                                 ]}
+                                onPress={() => handleItemPress(item)}
+                                activeOpacity={0.7}
                             >
                                 <Text style={[styles.eventTitle, { color: textColor }]} numberOfLines={1}>
                                     {item.title}
@@ -216,7 +238,7 @@ export default function DashboardScreen() {
                                 <Text style={[styles.eventCategory, { color: textColor }]}>
                                     {item.description || item.type}
                                 </Text>
-                            </View>
+                            </TouchableOpacity>
                         )
                     })}
 
@@ -288,6 +310,20 @@ export default function DashboardScreen() {
                 <Ionicons name="chatbubble-ellipses" size={24} color="white" />
                 <Text style={styles.fabText}>AI Assistant</Text>
             </TouchableOpacity>
+
+            {/* Schedule Item Editor Modal */}
+            {editingItem && (
+                <ScheduleItemEditor
+                    visible={showEditor}
+                    item={editingItem}
+                    onSave={handleSaveItem}
+                    onDelete={handleDeleteItem}
+                    onClose={() => {
+                        setShowEditor(false);
+                        setEditingItem(null);
+                    }}
+                />
+            )}
         </SafeAreaView>
     );
 }

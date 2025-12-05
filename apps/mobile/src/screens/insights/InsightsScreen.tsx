@@ -1,5 +1,6 @@
 import { ApiService, InsightMetrics } from '@/src/services/api';
 import { useApp } from '@/src/context/AppContext';
+import { hapticsLight } from '@/src/utils/haptics';
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState, useEffect } from 'react';
@@ -44,6 +45,7 @@ export default function InsightsScreen() {
     }, [insightsRefreshTrigger, hasLoadedOnce]);
 
     const onRefresh = () => {
+        hapticsLight();
         setRefreshing(true);
         fetchInsights();
     };

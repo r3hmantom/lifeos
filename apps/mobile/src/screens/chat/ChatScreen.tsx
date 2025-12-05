@@ -2,6 +2,7 @@ import { ApiService, ChatMessage, ChatResponse, ProposedScheduleItem } from '@/s
 import ScheduleProposal from '@/src/components/chat/ScheduleProposal';
 import TimeSlotEditor from '@/src/components/chat/TimeSlotEditor';
 import { useApp } from '@/src/context/AppContext';
+import { hapticsLight, hapticsMedium, hapticsSuccess, hapticsSelection } from '@/src/utils/haptics';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -159,6 +160,7 @@ export default function ChatScreen() {
     const sendMessage = async () => {
         if (!inputText.trim()) return;
 
+        hapticsLight();
         const userMessage: ChatMessage = { role: 'user', content: inputText.trim() };
         const newMessages = [...messages, userMessage];
         setMessages(newMessages);
@@ -218,6 +220,7 @@ export default function ChatScreen() {
             setMessages(prev => [...prev, assistantMessage]);
             // Enable auto-scroll for new messages
             shouldAutoScrollRef.current = true;
+            hapticsSuccess();
 
             // Handle schedule proposals - matching web app behavior
             if (responseData.intent === 'schedule_generated' && responseData.data?.schedule) {
@@ -315,6 +318,7 @@ export default function ChatScreen() {
     const handleAcceptAllSchedule = async () => {
         if (!pendingScheduleProposal) return;
 
+        hapticsMedium();
         // Disable auto-scroll when accepting items
         shouldAutoScrollRef.current = false;
 
@@ -388,6 +392,7 @@ export default function ChatScreen() {
                 content: "Great! I've added all the schedule items to your calendar."
             }]);
 
+            hapticsSuccess();
             Alert.alert("Success", "Schedule items have been added to your calendar!");
         } catch (error) {
             console.error("Failed to accept schedule", error);
@@ -398,6 +403,7 @@ export default function ChatScreen() {
     };
 
     const handleRejectAllSchedule = () => {
+        hapticsLight();
         setPendingScheduleProposal(null);
         setProposalMessageIndex(-1);
         setAcceptedScheduleIndices(new Set());
@@ -417,6 +423,7 @@ export default function ChatScreen() {
     const handleAcceptItem = async (index: number) => {
         if (!pendingScheduleProposal) return;
 
+        hapticsSelection();
         // Disable auto-scroll when accepting individual items
         shouldAutoScrollRef.current = false;
 
@@ -464,6 +471,7 @@ export default function ChatScreen() {
             // Refresh insights and schedule when time slot is accepted
             refreshInsights();
             refreshSchedule();
+            hapticsSuccess();
 
             // Mark item as accepted
             setAcceptedScheduleIndices(prev => new Set(prev).add(index));
@@ -481,6 +489,7 @@ export default function ChatScreen() {
     const handleRejectItem = (index: number) => {
         if (!pendingScheduleProposal) return;
         
+        hapticsLight();
         // Disable auto-scroll when rejecting individual items
         shouldAutoScrollRef.current = false;
         
@@ -498,6 +507,7 @@ export default function ChatScreen() {
     };
 
     const handleEditItem = (index: number) => {
+        hapticsMedium();
         setEditingItemIndex(index);
         setShowTimeEditor(true);
     };
@@ -524,6 +534,7 @@ export default function ChatScreen() {
     };
 
     const startNewChat = () => {
+        hapticsMedium();
         setChatId(undefined);
         setMessages([
             { role: 'assistant', content: "Hi! I'm your LifeOS assistant. I can help you plan your schedule, manage tasks, or answer questions about your goals." }
@@ -586,13 +597,22 @@ export default function ChatScreen() {
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <TouchableOpacity 
+                    onPress={() => {
+                        hapticsLight();
+                        navigation.goBack();
+                    }} 
+                    style={styles.backButton}
+                >
                     <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>AI Assistant</Text>
                 <View style={styles.headerActions}>
                     <TouchableOpacity
-                        onPress={() => setShowHistory(true)}
+                        onPress={() => {
+                            hapticsLight();
+                            setShowHistory(true);
+                        }}
                         style={styles.historyButton}
                     >
                         <Ionicons name="time-outline" size={24} color={Colors.text.primary} />
