@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -502,24 +503,26 @@ export default function ChatScreen() {
                 </View>
             </View>
 
-            <ScrollView
-                ref={scrollViewRef}
-                style={styles.messagesList}
-                contentContainerStyle={styles.messagesContent}
-                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-            >
-                {messages.map((msg, index) => renderMessage(msg, index))}
-                {isLoading && (
-                    <View style={styles.loadingBubble}>
-                        <ActivityIndicator size="small" color={Colors.gray[500]} />
-                    </View>
-                )}
-            </ScrollView>
-
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 60 : 0}
+                style={{ flex: 1 }}
             >
+                <ScrollView
+                    ref={scrollViewRef}
+                    style={styles.messagesList}
+                    contentContainerStyle={styles.messagesContent}
+                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {messages.map((msg, index) => renderMessage(msg, index))}
+                    {isLoading && (
+                        <View style={styles.loadingBubble}>
+                            <ActivityIndicator size="small" color={Colors.gray[500]} />
+                        </View>
+                    )}
+                </ScrollView>
+
                 <View style={[styles.inputContainer, { paddingBottom: 12 + insets.bottom }]}>
                     <TextInput
                         style={styles.input}
@@ -529,6 +532,11 @@ export default function ChatScreen() {
                         multiline
                         maxLength={500}
                         onSubmitEditing={sendMessage}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
+                        }}
                     />
                     <TouchableOpacity
                         style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
