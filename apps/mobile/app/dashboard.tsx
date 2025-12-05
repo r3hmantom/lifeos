@@ -5,6 +5,7 @@ import GoalsScreen from "@/src/screens/goals/GoalsScreen";
 import InsightsScreen from "@/src/screens/insights/InsightsScreen";
 import MemoriesScreen from "@/src/screens/memories/MemoriesScreen";
 import SettingsScreen from "@/src/screens/settings/SettingsScreen";
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import React, { useEffect, useState } from 'react';
@@ -37,6 +38,11 @@ export default function DashboardLayout() {
         <Tab.Navigator
             initialRouteName="Dashboard"
             tabBarPosition="bottom"
+            screenListeners={{
+                tabPress: () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                },
+            }}
             screenOptions={{
                 tabBarActiveTintColor: Colors.primary,
                 tabBarInactiveTintColor: Colors.gray[400],
