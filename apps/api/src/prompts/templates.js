@@ -58,8 +58,8 @@ Current Date: ${context.date}
 Timezone: ${context.timezone}
 
 Context:
-- Selected Goals: ${JSON.stringify(context.selectedGoals || [])}
-- Selected Memories: ${JSON.stringify(context.selectedMemories || [])}
+- Active Goals: ${JSON.stringify(context.selectedGoals || [])}
+- Active Memories: ${JSON.stringify(context.selectedMemories || [])}
 - Current Schedule: ${JSON.stringify(context.currentSchedule || [])}
 
 Your capabilities:

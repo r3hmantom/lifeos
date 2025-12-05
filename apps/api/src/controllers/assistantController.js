@@ -34,7 +34,9 @@ exports.chat = async (req, res) => {
       });
     }
 
-    // Fetch selected goals and memories if IDs are provided
+    // Fetch goals and memories
+    // If specific IDs are selected (e.g. from Web UI), use those
+    // Otherwise (e.g. Mobile App), fetch all active ones
     let selectedGoals = [];
     let selectedMemories = [];
 
@@ -45,6 +47,13 @@ exports.chat = async (req, res) => {
           userId: req.userId,
         },
       });
+    } else {
+      selectedGoals = await prisma.goal.findMany({
+        where: {
+          userId: req.userId,
+          isActive: true,
+        },
+      });
     }
 
     if (context?.selectedMemoryIds?.length > 0) {
@@ -52,6 +61,13 @@ exports.chat = async (req, res) => {
         where: {
           id: { in: context.selectedMemoryIds },
           userId: req.userId,
+        },
+      });
+    } else {
+      selectedMemories = await prisma.memory.findMany({
+        where: {
+          userId: req.userId,
+          isActive: true,
         },
       });
     }
