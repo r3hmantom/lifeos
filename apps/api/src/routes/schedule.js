@@ -68,6 +68,28 @@ router.post("/", authMiddleware, scheduleController.createScheduleItem);
 
 /**
  * @swagger
+ * /schedule/daily:
+ *   delete:
+ *     summary: Clear all schedule items for a specific date
+ *     tags: [Schedule]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date in YYYY-MM-DD format
+ *     responses:
+ *       200:
+ *         description: Daily schedule cleared
+ */
+router.delete("/daily", authMiddleware, scheduleController.clearDailySchedule);
+
+/**
+ * @swagger
  * /schedule/{id}:
  *   patch:
  *     summary: Update a schedule item

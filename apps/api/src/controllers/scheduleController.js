@@ -93,14 +93,54 @@ exports.deleteScheduleItem = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // If id is 'daily', it's actually the daily clear request being routed incorrectly
+    // or we need to handle it specifically if the route pattern matches.
+    // However, Express routing usually prioritizes specific paths before params.
+    // But here, we might need a specific controller function for the daily delete.
+    
     await prisma.scheduleItem.delete({
       where: { id, userId: req.userId },
     });
 
     return res.json({ message: "Schedule item deleted successfully" });
   } catch (err) {
+    // Check for record not found error
+    if (err.code === 'P2025') {
+        return res.status(404).json({ error: "Schedule item not found" });
+    }
     console.error(err);
     return res.status(500).json({ error: "Failed to delete schedule item" });
+  }
+};
+
+exports.clearDailySchedule = async (req, res) => {
+  const { date } = req.query;
+  
+  if (!date) {
+    return res.status(400).json({ error: "Date parameter is required" });
+  }
+
+  const targetDate = new Date(date);
+  const startOfDay = new Date(targetDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(targetDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  try {
+    const result = await prisma.scheduleItem.deleteMany({
+      where: {
+        userId: req.userId,
+        startTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+
+    return res.json({ message: "Daily schedule cleared successfully", count: result.count });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to clear daily schedule" });
   }
 };
 
