@@ -44,6 +44,7 @@ export default function ScheduleItemEditor({
     const [endHour, setEndHour] = useState('5');
     const [endMinute, setEndMinute] = useState('00');
     const [endAmPm, setEndAmPm] = useState<'AM' | 'PM'>('PM');
+    const [isCompleted, setIsCompleted] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -107,6 +108,7 @@ export default function ScheduleItemEditor({
             setEndHour(end12.hour);
             setEndMinute(end12.minute);
             setEndAmPm(end12.amPm);
+            setIsCompleted(item.isCompleted || false);
         }
     }, [item]);
 
@@ -247,6 +249,7 @@ export default function ScheduleItemEditor({
                 description: description.trim() || undefined,
                 startTime: startDateTime.toISOString(),
                 endTime: endDateTime.toISOString(),
+                isCompleted: isCompleted
             });
 
             hapticsSuccess();
@@ -597,6 +600,16 @@ const styles = StyleSheet.create({
     textArea: {
         minHeight: 100,
         paddingTop: 16,
+    },
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    checkboxLabel: {
+        fontSize: 16,
+        fontFamily: Fonts.primary.medium,
+        color: Colors.text.primary,
     },
     timeInputContainer: {
         marginBottom: 24,

@@ -27,7 +27,7 @@ const HOUR_HEIGHT = 100;
 export default function DashboardScreen() {
     const navigation = useNavigation<any>();
     const router = useRouter();
-    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState, scheduleRefreshTrigger, refreshSchedule } = useApp();
+    const { hasCreatedMemory, hasCreatedGoal, isScheduleGenerated, checkState, scheduleRefreshTrigger, refreshSchedule, refreshInsights } = useApp();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -164,9 +164,30 @@ export default function DashboardScreen() {
         setShowEditor(true);
     };
 
-    const handleSaveItem = async () => {
-        await loadSchedule();
-        refreshSchedule();
+    const handleToggleComplete = async (item: ScheduleItem) => {
+        hapticsSuccess();
+        try {
+            // Optimistic update
+            setScheduleItems(current =>
+                current.map(i =>
+                    i.id === item.id ? { ...i, isCompleted: !i.isCompleted } : i
+                )
+            );
+
+            await ApiService.schedule.update(item.id, {
+                isCompleted: !item.isCompleted
+            });
+            
+            // Refresh insights since a task was completed
+            refreshInsights();
+            
+            // refreshSchedule(); // Removed to prevent full reload
+        } catch (e) {
+            console.error("Failed to toggle completion", e);
+            Alert.alert("Error", "Failed to update task status");
+            // Revert on error
+            await loadSchedule();
+        }
     };
 
     const handleDeleteItem = async () => {
@@ -239,7 +260,13 @@ export default function DashboardScreen() {
                         // Determine color based on type
                         let bgColor = "#E0F2FE";
                         let textColor = "#0369A1";
-                        if (item.type === 'goal_task') {
+                        let borderColor = "transparent";
+                        
+                        if (item.isCompleted) {
+                            bgColor = "#F0FDF4"; // Light green
+                            textColor = "#15803D"; // Green text
+                            borderColor = "#86EFAC"; // Green border
+                        } else if (item.type === 'goal_task') {
                             bgColor = "#F3E8FF";
                             textColor = "#7E22CE";
                         } else if (item.type === 'fixed_commitment') {
@@ -256,15 +283,45 @@ export default function DashboardScreen() {
                                         backgroundColor: bgColor,
                                         top: (startMinutes / 60) * HOUR_HEIGHT,
                                         height: durationHours * HOUR_HEIGHT,
+                                        borderColor: borderColor,
+                                        borderWidth: item.isCompleted ? 1 : 0,
                                     }
                                 ]}
                                 onPress={() => handleItemPress(item)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[styles.eventTitle, { color: textColor }]} numberOfLines={1}>
-                                    {item.title}
-                                </Text>
-                                <Text style={[styles.eventCategory, { color: textColor }]}>
+                                <View style={styles.eventHeader}>
+                                    <Text 
+                                        style={[
+                                            styles.eventTitle, 
+                                            { color: textColor },
+                                            item.isCompleted && styles.completedText
+                                        ]} 
+                                        numberOfLines={1}
+                                    >
+                                        {item.title}
+                                    </Text>
+                                    <TouchableOpacity 
+                                        onPress={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleComplete(item);
+                                        }}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                        <Ionicons 
+                                            name={item.isCompleted ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={textColor} 
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                <Text 
+                                    style={[
+                                        styles.eventCategory, 
+                                        { color: textColor },
+                                        item.isCompleted && styles.completedText
+                                    ]}
+                                >
                                     {item.description || item.type}
                                 </Text>
                             </TouchableOpacity>
@@ -478,10 +535,21 @@ const styles = StyleSheet.create({
         padding: 10,
         justifyContent: 'center',
     },
+    eventHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 2,
+    },
     eventTitle: {
         fontSize: 13,
         fontFamily: Fonts.primary.semiBold,
-        marginBottom: 2,
+        flex: 1,
+        marginRight: 4,
+    },
+    completedText: {
+        textDecorationLine: 'line-through',
+        opacity: 0.7,
     },
     eventCategory: {
         fontSize: 11,
