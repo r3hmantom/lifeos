@@ -1,0 +1,188 @@
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { Plus, Trash2 } from "lucide-react"
+import { memoriesApi } from "@/lib/api"
+import type { Memory } from "@/lib/api"
+import { Button } from "@/components/ui/button"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from "sonner"
+
+const formSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    // We'll parse this comma-separated string
+})
+
+export default function Memories() {
+    const [memories, setMemories] = useState<Memory[]>([])
+    const [isOpen, setIsOpen] = useState(false)
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            title: "",
+            description: "",
+        },
+    })
+
+    useEffect(() => {
+        fetchMemories()
+    }, [])
+
+    const fetchMemories = async () => {
+        try {
+            const response = await memoriesApi.getAll()
+            setMemories(response.data.data)
+        } catch (error) {
+            console.error("Failed to fetch memories")
+        }
+    }
+
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        try {
+
+            await memoriesApi.create({
+                title: values.title,
+                description: values.description,
+            })
+
+            toast.success("Memory created successfully")
+            setIsOpen(false)
+            form.reset()
+            fetchMemories()
+        } catch (error) {
+            toast.error("Failed to create memory")
+        }
+    }
+
+    const toggleActive = async (id: string, currentState: boolean) => {
+        try {
+            await memoriesApi.update(id, { isActive: !currentState })
+            setMemories(memories.map(m => m.id === id ? { ...m, isActive: !currentState } : m))
+            toast.success("Memory status updated")
+        } catch (error) {
+            toast.error("Failed to update memory status")
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        try {
+            await memoriesApi.delete(id)
+            setMemories(memories.filter(m => m.id !== id))
+            toast.success("Memory deleted successfully")
+        } catch (error) {
+            toast.error("Failed to delete memory")
+        }
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-bold tracking-tight">Memories</h2>
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Memory
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Create New Memory</DialogTitle>
+                            <DialogDescription>
+                                Save a memory or commitment.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="title"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Title</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., First Marathon" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Description</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Describe the memory..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+
+                                <Button type="submit" className="w-full">Save Memory</Button>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {memories.map((memory) => (
+                    <Card key={memory.id}>
+                        <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        checked={memory.isActive}
+                                        onCheckedChange={() => toggleActive(memory.id, memory.isActive)}
+                                    />
+                                    <span>{memory.title}</span>
+                                </div>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                                {memory.description}
+                            </p>
+                            <div className="flex items-center justify-between">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive/90"
+                                    onClick={() => handleDelete(memory.id)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    )
+}
